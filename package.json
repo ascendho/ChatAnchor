@@ -1,0 +1,42 @@
+{
+  "name": "threadrelink-monorepo",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Path-independent discovery and recovery for local Codex conversations.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ascendho/ThreadRelink.git"
+  },
+  "homepage": "https://github.com/ascendho/ThreadRelink#readme",
+  "bugs": {
+    "url": "https://github.com/ascendho/ThreadRelink/issues"
+  },
+  "keywords": [
+    "codex",
+    "conversation",
+    "repository",
+    "rename",
+    "vscode"
+  ],
+  "packageManager": "pnpm@10.13.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r --stream build",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "lint": "eslint .",
+    "typecheck": "pnpm -r --stream typecheck",
+    "test": "pnpm -r --stream --if-present test",
+    "package:vscode": "pnpm --filter threadrelink-vscode package"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.31.0",
+    "@types/node": "^22.16.5",
+    "eslint": "^9.31.0",
+    "globals": "^16.3.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.38.0"
+  }
+}

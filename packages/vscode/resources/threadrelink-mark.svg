@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="threadrelink-gradient" x1="82" y1="72" x2="432" y2="448" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#246BFD"/>
+      <stop offset="1" stop-color="#6545E8"/>
+    </linearGradient>
+  </defs>
+  <rect x="36" y="36" width="440" height="440" rx="120" fill="url(#threadrelink-gradient)"/>
+  <path d="M238 117h158c29 0 52 23 52 52v152c0 29-23 52-52 52h-75l-83 61v-61c-29 0-52-23-52-52V169c0-29 23-52 52-52Z" fill="none" stroke="#fff" stroke-width="30" stroke-linejoin="round"/>
+  <path d="M252 205h130M252 263h82" fill="none" stroke="#fff" stroke-width="26" stroke-linecap="round"/>
+  <path d="M145 341v-70c0-44-35-79-79-79H59" fill="none" stroke="#6EF0D2" stroke-width="32" stroke-linecap="round"/>
+  <path d="m99 150-42 42 42 42" fill="none" stroke="#6EF0D2" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

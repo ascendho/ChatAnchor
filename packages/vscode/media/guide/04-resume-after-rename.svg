@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <style>
+    text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#242424}
+    .small{font-size:13px}.ui{font-size:15px}.muted{fill:#666}.callout{fill:#e5484d}.calloutText{fill:#fff;font-weight:700;font-size:18px}.white{fill:#fff}
+  </style>
+  <rect width="1200" height="720" rx="12" fill="#fff"/><rect width="1200" height="38" rx="12" fill="#f3f3f3"/>
+  <circle cx="18" cy="19" r="6" fill="#ff5f57"/><circle cx="38" cy="19" r="6" fill="#ffbd2e"/><circle cx="58" cy="19" r="6" fill="#28c840"/>
+  <rect x="450" y="8" width="300" height="23" rx="6" fill="#e8e8e8"/><text x="600" y="24" text-anchor="middle" class="small">finspec — Visual Studio Code</text>
+  <rect y="38" width="50" height="658" fill="#f5f5f5"/><rect x="50" y="38" width="365" height="658" fill="#f8f8f8"/>
+  <rect x="2" y="278" width="46" height="42" fill="#e2e2e2"/>
+  <g transform="translate(13 286)" stroke="#333" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 8.5V5.8A1.8 1.8 0 0 1 6.8 4h10.4A1.8 1.8 0 0 1 19 5.8v8.4a1.8 1.8 0 0 1-1.8 1.8H12l-4.5 3v-3h-.7A1.8 1.8 0 0 1 5 14.2V12"/>
+    <path d="M8 7.5h8M8 11h5M2.5 8.5 5 11l2.5-2.5"/>
+  </g>
+  <text x="68" y="68" class="small muted">THREADRELINK: CODEX CONVERSATIONS</text>
+  <text x="72" y="111" class="ui" font-weight="650">▾  finspec</text><text x="314" y="111" class="small muted">Git project</text>
+  <text x="92" y="150" class="ui" font-weight="600">▾  Conversations</text><text x="368" y="150" class="small muted">1</text>
+  <rect x="78" y="164" width="321" height="48" rx="6" fill="#e8f2fb"/>
+  <text x="105" y="187" class="ui">Plan a safe repository rename</text><text x="105" y="204" class="small muted">today</text>
+  <circle cx="374" cy="188" r="13" fill="#007acc"/><path d="M370 181l9 7-9 7z" fill="#fff"/>
+  <rect x="71" y="157" width="335" height="62" rx="8" fill="none" stroke="#e5484d" stroke-width="4"/>
+  <circle cx="438" cy="188" r="20" class="callout"/><text x="438" y="195" text-anchor="middle" class="calloutText">5</text>
+  <path d="M417 188h-11" stroke="#e5484d" stroke-width="4"/><path d="M406 188l9-7v14z" fill="#e5484d"/>
+  <text x="92" y="252" class="ui">⌕  Find old conversations</text>
+  <rect x="415" y="38" width="785" height="658" fill="#fff"/><rect x="415" y="38" width="785" height="36" fill="#f6f6f6"/>
+  <text x="438" y="62" class="small">README.md</text>
+  <text x="482" y="164" font-size="28" font-weight="650">toolspec → finspec</text>
+  <text x="482" y="205" class="ui muted">The same Git project ID reconnects the original Codex conversation.</text>
+  <rect x="482" y="254" width="570" height="86" rx="10" fill="#f6f8fa" stroke="#d8dee4"/>
+  <text x="510" y="286" class="small muted">Recorded path</text><text x="510" y="314" class="ui">~/Desktop/toolspec</text>
+  <path d="M755 298h58" stroke="#007acc" stroke-width="3"/><path d="M813 298l-10-7v14z" fill="#007acc"/>
+  <text x="850" y="286" class="small muted">Current path</text><text x="850" y="314" class="ui">~/Desktop/finspec</text>
+  <rect y="696" width="1200" height="24" fill="#007acc"/><text x="14" y="713" class="small white">main*</text>
+</svg>

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <style>
+    text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#242424}
+    .small{font-size:13px}.ui{font-size:15px}.muted{fill:#6b6b6b}.callout{fill:#e5484d}.calloutText{fill:#fff;font-weight:700;font-size:18px}.white{fill:#fff}
+  </style>
+  <rect width="1200" height="720" rx="12" fill="#fff"/><rect width="1200" height="38" rx="12" fill="#f3f3f3"/>
+  <circle cx="18" cy="19" r="6" fill="#ff5f57"/><circle cx="38" cy="19" r="6" fill="#ffbd2e"/><circle cx="58" cy="19" r="6" fill="#28c840"/>
+  <rect x="450" y="8" width="300" height="23" rx="6" fill="#e8e8e8"/><text x="600" y="24" text-anchor="middle" class="small">toolspec — Visual Studio Code</text>
+  <rect y="38" width="50" height="658" fill="#f5f5f5"/><rect x="50" y="38" width="250" height="658" fill="#f8f8f8"/>
+  <g stroke="#666" stroke-width="2" fill="none">
+    <path d="M17 65h18v20H17z"/><circle cx="26" cy="119" r="8"/><path d="M20 155l12 12M32 155l-12 12"/>
+    <path d="M18 198h16v15H18z"/><path d="M18 241h16v16H18z"/>
+  </g>
+  <g transform="translate(13 286)" stroke="#444" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 8.5V5.8A1.8 1.8 0 0 1 6.8 4h10.4A1.8 1.8 0 0 1 19 5.8v8.4a1.8 1.8 0 0 1-1.8 1.8H12l-4.5 3v-3h-.7A1.8 1.8 0 0 1 5 14.2V12"/>
+    <path d="M8 7.5h8M8 11h5M2.5 8.5 5 11l2.5-2.5"/>
+  </g>
+  <rect x="7" y="279" width="38" height="38" rx="7" fill="none" stroke="#e5484d" stroke-width="4"/>
+  <circle cx="90" cy="298" r="20" class="callout"/><text x="90" y="305" text-anchor="middle" class="calloutText">2</text>
+  <path d="M69 298H45" stroke="#e5484d" stroke-width="4"/><path d="M45 298l10-7v14z" fill="#e5484d"/>
+  <rect x="54" y="276" width="118" height="43" rx="6" fill="#2d2d30"/><text x="113" y="302" text-anchor="middle" class="small white">ThreadRelink</text>
+  <text x="67" y="68" class="small muted">EXPLORER</text><text x="67" y="104" class="small" font-weight="600">TOOLSPEC</text>
+  <text x="82" y="138" class="small muted">README.md</text><text x="82" y="166" class="small muted">src</text><text x="82" y="194" class="small muted">package.json</text>
+  <rect x="300" y="38" width="900" height="658" fill="#fff"/><rect x="300" y="38" width="900" height="36" fill="#f6f6f6"/>
+  <text x="320" y="62" class="small">README.md</text>
+  <text x="350" y="122" font-size="25" font-weight="650">ThreadRelink</text>
+  <text x="350" y="162" class="ui muted">Keep local Codex conversations discoverable after a project rename.</text>
+  <rect x="350" y="205" width="460" height="11" rx="5" fill="#e6e6e6"/><rect x="350" y="231" width="610" height="11" rx="5" fill="#ededed"/>
+  <rect x="350" y="257" width="540" height="11" rx="5" fill="#ededed"/>
+  <rect y="696" width="1200" height="24" fill="#007acc"/><text x="14" y="713" class="small white">main*</text>
+</svg>

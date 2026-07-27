@@ -1,0 +1,269 @@
+{
+  "name": "threadrelink-vscode",
+  "displayName": "ThreadRelink",
+  "description": "Keep local Codex conversations discoverable after a repository is renamed or moved.",
+  "version": "0.4.0",
+  "icon": "resources/threadrelink.png",
+  "publisher": "ascendho",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ascendho/ThreadRelink.git",
+    "directory": "packages/vscode"
+  },
+  "homepage": "https://github.com/ascendho/ThreadRelink#readme",
+  "bugs": {
+    "url": "https://github.com/ascendho/ThreadRelink/issues"
+  },
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "codex",
+    "conversation",
+    "history",
+    "repository",
+    "rename"
+  ],
+  "main": "./dist/extension.cjs",
+  "activationEvents": [
+    "onStartupFinished",
+    "onView:threadrelink.conversations"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "ThreadRelink starts a local Codex process and reads local conversation metadata."
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "threadrelink.enable",
+        "title": "ThreadRelink: Enable Local Metadata Scan",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "threadrelink.openGettingStarted",
+        "title": "ThreadRelink: Open Getting Started",
+        "icon": "$(book)"
+      },
+      {
+        "command": "threadrelink.openView",
+        "title": "ThreadRelink: Open Conversations View",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "threadrelink.initialize",
+        "title": "ThreadRelink: Set Up This Project",
+        "icon": "$(key)"
+      },
+      {
+        "command": "threadrelink.findOldConversations",
+        "title": "ThreadRelink: Find Old Conversations",
+        "icon": "$(search)"
+      },
+      {
+        "command": "threadrelink.forgetProject",
+        "title": "ThreadRelink: Forget Project",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "threadrelink.refresh",
+        "title": "ThreadRelink: Refresh Conversations",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "threadrelink.confirmLink",
+        "title": "ThreadRelink: Link Conversation to This Project",
+        "icon": "$(link)"
+      },
+      {
+        "command": "threadrelink.resume",
+        "title": "ThreadRelink: Resume Conversation Here",
+        "icon": "$(debug-continue)"
+      },
+      {
+        "command": "threadrelink.relink",
+        "title": "ThreadRelink: Relink Previous Project Path",
+        "icon": "$(folder-symlink)"
+      },
+      {
+        "command": "threadrelink.doctor",
+        "title": "ThreadRelink: Run Diagnostics",
+        "icon": "$(stethoscope)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "threadrelink",
+          "title": "ThreadRelink",
+          "icon": "resources/threadrelink.svg"
+        }
+      ]
+    },
+    "views": {
+      "threadrelink": [
+        {
+          "id": "threadrelink.conversations",
+          "name": "Codex Conversations"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "threadrelink.conversations",
+        "contents": "Open a project folder to use ThreadRelink.\n[Open Getting Started](command:threadrelink.openGettingStarted)",
+        "when": "workspaceFolderCount == 0"
+      }
+    ],
+    "walkthroughs": [
+      {
+        "id": "threadrelink.gettingStarted",
+        "title": "Keep Codex conversations after a project rename",
+        "description": "Initialize once, then resume the same local Codex thread from any renamed or moved path.",
+        "steps": [
+          {
+            "id": "threadrelink.gettingStarted.openView",
+            "title": "Find ThreadRelink",
+            "description": "Open the ThreadRelink icon in the Activity Bar. If it is hidden, right-click the Activity Bar and enable **ThreadRelink**.\n[Open ThreadRelink](command:threadrelink.openView)",
+            "media": {
+              "image": "media/guide/02-find-threadrelink.png",
+              "altText": "ThreadRelink icon highlighted in the VS Code Activity Bar"
+            },
+            "completionEvents": [
+              "onCommand:threadrelink.openView"
+            ]
+          },
+          {
+            "id": "threadrelink.gettingStarted.enable",
+            "title": "Allow the metadata-only scan",
+            "description": "Allow metadata access once for this VS Code profile. New projects are never scanned until you explicitly set them up.\n[Enable metadata scan](command:threadrelink.enable)",
+            "media": {
+              "image": "media/guide/03-enable-and-initialize.png",
+              "altText": "ThreadRelink setup action before a project is scanned"
+            },
+            "completionEvents": [
+              "onCommand:threadrelink.enable"
+            ]
+          },
+          {
+            "id": "threadrelink.gettingStarted.initialize",
+            "title": "Set up this project explicitly",
+            "description": "Store a stable local project ID before renaming or moving the folder. A folder inside a parent Git repository always asks you to choose its boundary.\n[Set Up This Project](command:threadrelink.initialize)",
+            "media": {
+              "image": "media/guide/03-enable-and-initialize.png",
+              "altText": "Set Up This Project action in the ThreadRelink view"
+            },
+            "completionEvents": [
+              "onCommand:threadrelink.initialize"
+            ]
+          },
+          {
+            "id": "threadrelink.gettingStarted.reopen",
+            "title": "Rename and reopen the folder",
+            "description": "Close the Codex terminal, rename the folder outside VS Code, reopen the new path, then refresh ThreadRelink.\n[Refresh conversations](command:threadrelink.refresh)",
+            "media": {
+              "image": "media/guide/04-resume-after-rename.png",
+              "altText": "A renamed project with its linked Codex conversation"
+            },
+            "completionEvents": [
+              "onCommand:threadrelink.refresh"
+            ]
+          },
+          {
+            "id": "threadrelink.gettingStarted.resume",
+            "title": "Resume the original conversation",
+            "description": "Hover a conversation and select the continue icon. ThreadRelink opens `codex resume --cd <new-path> <thread-id>` in an integrated terminal.\n[Resume a conversation](command:threadrelink.resume)",
+            "media": {
+              "image": "media/guide/05-resumed-terminal.png",
+              "altText": "Codex conversation resumed in an integrated terminal at the new path"
+            },
+            "completionEvents": [
+              "onCommand:threadrelink.resume"
+            ]
+          }
+        ]
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "threadrelink.refresh",
+          "when": "view == threadrelink.conversations && threadrelink.hasReadyProject",
+          "group": "navigation@1"
+        },
+        {
+          "command": "threadrelink.initialize",
+          "when": "view == threadrelink.conversations && threadrelink.hasUninitializedProject",
+          "group": "navigation@2"
+        },
+        {
+          "command": "threadrelink.findOldConversations",
+          "when": "view == threadrelink.conversations && threadrelink.hasReadyProject",
+          "group": "navigation@2"
+        },
+        {
+          "command": "threadrelink.relink",
+          "when": "view == threadrelink.conversations && threadrelink.hasReadyProject",
+          "group": "manage@1"
+        },
+        {
+          "command": "threadrelink.forgetProject",
+          "when": "view == threadrelink.conversations",
+          "group": "manage@2"
+        },
+        {
+          "command": "threadrelink.doctor",
+          "when": "view == threadrelink.conversations",
+          "group": "manage@3"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "threadrelink.resume",
+          "when": "view == threadrelink.conversations && viewItem == threadrelink.linkedThread",
+          "group": "inline@1"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "ThreadRelink",
+      "properties": {
+        "threadrelink.codexPath": {
+          "type": "string",
+          "default": "codex",
+          "description": "Codex executable name or absolute path."
+        },
+        "threadrelink.autoSync": {
+          "type": "boolean",
+          "default": true,
+          "description": "Refresh local Codex conversation metadata when an explicitly set-up, trusted project opens, after consent."
+        },
+        "threadrelink.registryHome": {
+          "type": "string",
+          "default": "",
+          "description": "Optional ThreadRelink state directory. Leave empty to use THREADRELINK_HOME or ~/.threadrelink."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "package": "pnpm build && vsce package --no-dependencies --out threadrelink.vsix"
+  },
+  "devDependencies": {
+    "@threadrelink/core": "workspace:*",
+    "@types/vscode": "^1.95.0",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.6.0",
+    "esbuild": "^0.25.8",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,16 @@
+node_modules/
+.pnpm-store/
+dist/
+coverage/
+.nyc_output/
+.vscode-test/
+*.vsix
+*.tgz
+*.log
+*.tmp
+.DS_Store
+.env
+.env.*
+!.env.example
+.threadrelink/
+.reporecall/
