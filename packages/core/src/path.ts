@@ -43,9 +43,14 @@ export function isPathInside(candidate: string, root: string): boolean {
 }
 
 export function relativeToRoot(candidate: string, root: string): string | null {
-  return isPathInside(candidate, root)
-    ? relative(normalizeAbsolutePath(root), normalizeAbsolutePath(candidate))
-    : null;
+  if (!isPathInside(candidate, root)) {
+    return null;
+  }
+
+  return relative(
+    normalizeAbsolutePath(root),
+    normalizeAbsolutePath(candidate),
+  ).split(sep).join("/");
 }
 
 export function pathBasename(input: string): string {
