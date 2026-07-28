@@ -49,9 +49,14 @@ store a Personal Access Token.
      --identity-name threadrelink-marketplace-publisher \
      --resource-group threadrelink-publishing \
      --issuer https://token.actions.githubusercontent.com \
-     --subject repo:ascendho/ThreadRelink:environment:marketplace \
+     --subject 'repo:ascendho@78126591/ThreadRelink@1313819450:environment:marketplace' \
      --audiences api://AzureADTokenExchange
    ```
+
+   This repository uses GitHub's immutable owner and repository IDs in OIDC
+   subjects. The numeric IDs remain stable if the owner or repository is
+   renamed. A fork or transferred repository must use the subject shown in its
+   own GitHub OIDC assertion.
 
 6. Create a GitHub Environment named `marketplace`. Restrict its deployment
    tags to `v*`, then add these non-secret environment variables:
