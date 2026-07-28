@@ -15,6 +15,12 @@ interface ExtensionManifest {
   displayName: string;
   version: string;
   icon: string;
+  pricing: string;
+  publisher: string;
+  galleryBanner: {
+    color: string;
+    theme: string;
+  };
   contributes: {
     commands: Array<{ command: string }>;
     viewsContainers: {
@@ -35,9 +41,15 @@ const manifest = JSON.parse(
 
 describe("VS Code extension manifest", () => {
   it("publishes the ThreadRelink identity and icon assets", () => {
-    expect(manifest.name).toBe("threadrelink-vscode");
+    expect(manifest.name).toBe("threadrelink");
+    expect(manifest.publisher).toBe("ascendho");
     expect(manifest.displayName).toBe("ThreadRelink");
-    expect(manifest.version).toBe("0.4.0");
+    expect(manifest.version).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(manifest.pricing).toBe("Free");
+    expect(manifest.galleryBanner).toEqual({
+      color: "#315EF3",
+      theme: "dark",
+    });
     expect(manifest.icon).toBe("resources/threadrelink.png");
     expect(existsSync(resolve(packageDirectory, manifest.icon))).toBe(true);
 

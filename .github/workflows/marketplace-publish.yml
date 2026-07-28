@@ -1,0 +1,72 @@
+name: Publish VS Code Extension
+
+on:
+  release:
+    types: [published]
+
+permissions: {}
+
+concurrency:
+  group: marketplace-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish ${{ github.event.release.tag_name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: marketplace
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
+        with:
+          version: 10.13.1
+
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify release version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: pnpm check:release-version "${RELEASE_TAG}"
+
+      - name: Run checks
+        run: pnpm check
+
+      - name: Package the VS Code extension
+        run: pnpm package:vscode
+
+      - name: Attach the VSIX to the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "${RELEASE_TAG}" packages/vscode/threadrelink.vsix --clobber
+
+      - name: Sign in to Azure with GitHub OIDC
+        uses: azure/login@2dd0bbf4064d5a1812889dc200bb8eed2597f82a # v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Publish to the Visual Studio Marketplace
+        run: >-
+          pnpm --filter threadrelink exec vsce publish
+          --packagePath threadrelink.vsix
+          --azure-credential
+          --no-dependencies
+          --skip-duplicate

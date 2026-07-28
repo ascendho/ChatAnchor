@@ -6,6 +6,13 @@
   <img src="packages/vscode/resources/threadrelink.png" width="144" alt="ThreadRelink logo">
 </p>
 
+<p align="center">
+  <a href="https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml"><img src="https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/visual-studio-marketplace/v/ascendho.threadrelink?label=Marketplace&logo=visualstudiocode" alt="Visual Studio Marketplace version"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/visual-studio-marketplace/i/ascendho.threadrelink?logo=visualstudiocode" alt="Visual Studio Marketplace installs"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/ascendho/ThreadRelink" alt="MIT License"></a>
+</p>
+
 ThreadRelink is a local VS Code extension and CLI that keeps Codex
 conversations connected to a project after its folder is renamed or moved.
 
@@ -20,13 +27,23 @@ resumes the original thread in the new working directory.
 
 ## VS Code quick start
 
-### 1. Install the VSIX
+### 1. Install from the Marketplace
 
-Press `⌘⇧P` (`Ctrl+Shift+P` on Windows/Linux), run
-**Extensions: Install from VSIX...**, and select
+Search for **ThreadRelink** in the VS Code Extensions view, or run:
+
+```bash
+code --install-extension ascendho.threadrelink
+```
+
+Marketplace installations receive extension updates automatically when VS Code
+auto-update is enabled.
+
+For local development or offline installation, run `pnpm package:vscode`, then
+press `⌘⇧P` (`Ctrl+Shift+P` on Windows/Linux), select
+**Extensions: Install from VSIX...**, and choose
 `packages/vscode/threadrelink.vsix`.
 
-![Install the ThreadRelink VSIX](packages/vscode/media/guide/01-install-vsix.png)
+![Install a local ThreadRelink VSIX](packages/vscode/media/guide/01-install-vsix.png)
 
 ### 2. Open ThreadRelink
 
@@ -172,6 +189,9 @@ pnpm package:vscode
 ```
 
 CI runs checks and VSIX packaging on macOS, Linux, and Windows.
+Publishing is triggered by a matching `vX.Y.Z` GitHub Release after all checks
+pass. See [Marketplace publishing](docs/MARKETPLACE_PUBLISHING.md) for the
+one-time identity setup and release procedure.
 
 ## License
 

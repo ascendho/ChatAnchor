@@ -3,7 +3,14 @@
 [简体中文完整指南](https://github.com/ascendho/ThreadRelink/blob/main/README.zh-CN.md)
 
 <p align="center">
-  <img src="resources/threadrelink.png" width="144" alt="ThreadRelink logo">
+  <img src="https://raw.githubusercontent.com/ascendho/ThreadRelink/main/packages/vscode/resources/threadrelink.png" width="144" alt="ThreadRelink logo">
+</p>
+
+<p align="center">
+  <a href="https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml"><img src="https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/visual-studio-marketplace/v/ascendho.threadrelink?label=Marketplace&logo=visualstudiocode" alt="Visual Studio Marketplace version"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/visual-studio-marketplace/i/ascendho.threadrelink?logo=visualstudiocode" alt="Visual Studio Marketplace installs"></a>
+  <a href="https://github.com/ascendho/ThreadRelink/blob/main/LICENSE"><img src="https://img.shields.io/github/license/ascendho/ThreadRelink" alt="MIT License"></a>
 </p>
 
 Keep local Codex conversations connected to a project after its folder is
@@ -12,6 +19,18 @@ renamed or moved.
 ThreadRelink stores a stable local project UUID and uses it to resume the
 original Codex thread at the project's current path. It is local-only, has no
 telemetry, and never modifies Codex transcripts.
+
+## Installation
+
+Install **ThreadRelink** from the VS Code Marketplace, or run:
+
+```bash
+code --install-extension ascendho.threadrelink
+```
+
+VS Code automatically installs Marketplace updates when extension auto-update
+is enabled. A manually installed VSIX does not receive automatic updates by
+default.
 
 ## Quick start
 
@@ -28,9 +47,9 @@ ThreadRelink opens:
 codex resume --cd <current-project-path> <thread-id>
 ```
 
-![Set up ThreadRelink](media/guide/03-enable-and-initialize.png)
+![Set up ThreadRelink](https://raw.githubusercontent.com/ascendho/ThreadRelink/main/packages/vscode/media/guide/03-enable-and-initialize.png)
 
-![Resume after a folder rename](media/guide/04-resume-after-rename.png)
+![Resume after a folder rename](https://raw.githubusercontent.com/ascendho/ThreadRelink/main/packages/vscode/media/guide/04-resume-after-rename.png)
 
 ## Recovery tools
 

@@ -6,6 +6,7 @@
 - Migrate RepoRecall registry and project identities without changing UUIDs.
 - Add a dedicated Marketplace icon and refreshed Activity Bar artwork.
 - Separate English and Simplified Chinese documentation.
+- Add Marketplace installation and automatic release publishing.
 
 ## 0.3.0
 

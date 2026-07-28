@@ -1,0 +1,70 @@
+name: Check Marketplace Publishing Identity
+
+on:
+  workflow_dispatch:
+    inputs:
+      verify_access:
+        description: Verify that the identity is a Contributor on the publisher
+        required: true
+        type: boolean
+        default: false
+
+permissions: {}
+
+jobs:
+  authenticate:
+    name: Check Entra identity
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: marketplace
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Sign in to Azure with GitHub OIDC
+        uses: azure/login@2dd0bbf4064d5a1812889dc200bb8eed2597f82a # v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Show the Marketplace identity resource ID
+        shell: bash
+        run: |
+          profile_id="$(az rest \
+            --method get \
+            --url "https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.1" \
+            --resource 499b84ac-1321-427f-aa17-267ca6975798 \
+            --query id \
+            --output tsv)"
+          if [ -z "${profile_id}" ]; then
+            echo "Marketplace profile ID was empty." >&2
+            exit 1
+          fi
+          echo "::notice title=Marketplace profile ID::${profile_id}"
+          echo "Marketplace profile ID: \`${profile_id}\`" >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Check out the repository
+        if: ${{ inputs.verify_access }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Install pnpm
+        if: ${{ inputs.verify_access }}
+        uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
+        with:
+          version: 10.13.1
+
+      - name: Install Node.js
+        if: ${{ inputs.verify_access }}
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        if: ${{ inputs.verify_access }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify Marketplace Contributor access
+        if: ${{ inputs.verify_access }}
+        run: pnpm --filter threadrelink exec vsce verify-pat ascendho --azure-credential
