@@ -1,22 +1,21 @@
-# Marketplace publishing
+# Marketplace 发布
 
-ThreadRelink is published as `ascendho.threadrelink`. A GitHub Release whose tag
-matches the extension version publishes the VSIX to the Visual Studio
-Marketplace and attaches the same package to the GitHub Release.
+ThreadRelink 以 `ascendho.threadrelink` 发布。创建与扩展版本一致的 GitHub
+Release 后，自动化工作流会把 VSIX 发布到 Visual Studio Marketplace，并将同一
+文件添加到 GitHub Release。
 
-Marketplace installs receive VS Code extension updates automatically. A
-manually installed VSIX does not receive automatic updates by default.
+通过 Marketplace 安装的扩展会随 VS Code 自动更新。手动安装的 VSIX 默认不会
+自动更新。
 
-## One-time identity setup
+## 一次性身份配置
 
-The publishing workflow uses Microsoft Entra ID and GitHub OIDC. It does not
-store a Personal Access Token.
+发布工作流使用 Microsoft Entra ID 和 GitHub OIDC，不保存 Personal Access
+Token。
 
-1. Sign in to Azure DevOps and the Visual Studio Marketplace with the same
-   Microsoft account.
-2. Create the Marketplace publisher `ascendho`. Publisher IDs cannot be renamed.
-3. In an Azure subscription, create a resource group and a user-assigned managed
-   identity:
+1. 使用同一个 Microsoft 账户登录 Azure DevOps 和 Visual Studio Marketplace。
+2. 创建 Marketplace publisher `ascendho`。Publisher ID 创建后无法修改。
+3. 在 Azure subscription 中创建 resource group 和 user-assigned managed
+   identity：
 
    ```bash
    az group create \
@@ -28,9 +27,8 @@ store a Personal Access Token.
      --resource-group threadrelink-publishing
    ```
 
-4. Give the identity Reader access to the subscription. Replace the
-   placeholders with values returned by `az account show` and
-   `az identity show`:
+4. 为该 identity 授予 subscription 的 Reader 权限。将占位符替换为
+   `az account show` 和 `az identity show` 返回的值：
 
    ```bash
    az role assignment create \
@@ -40,8 +38,8 @@ store a Personal Access Token.
      --scope /subscriptions/<SUBSCRIPTION_ID>
    ```
 
-5. Add a federated credential that trusts only the `marketplace` GitHub
-   Environment in this repository:
+5. 添加 federated credential，只信任本仓库的 `marketplace` GitHub
+   Environment：
 
    ```bash
    az identity federated-credential create \
@@ -53,30 +51,29 @@ store a Personal Access Token.
      --audiences api://AzureADTokenExchange
    ```
 
-   This repository uses GitHub's immutable owner and repository IDs in OIDC
-   subjects. The numeric IDs remain stable if the owner or repository is
-   renamed. A fork or transferred repository must use the subject shown in its
-   own GitHub OIDC assertion.
+   OIDC subject 使用 GitHub 不可变的 owner ID 和 repository ID。即使 owner
+   或仓库改名，这些数字 ID 也不会变化。Fork 或转移仓库后，必须改用该仓库自身
+   GitHub OIDC assertion 中的 subject。
 
-6. Create a GitHub Environment named `marketplace`. Restrict its deployment
-   tags to `v*`, then add these non-secret environment variables:
+6. 创建名为 `marketplace` 的 GitHub Environment，将 deployment tag 限制为
+   `v*`，并添加以下非敏感环境变量：
 
    - `AZURE_CLIENT_ID`
    - `AZURE_TENANT_ID`
    - `AZURE_SUBSCRIPTION_ID`
 
-7. Run **Check Marketplace Publishing Identity** with `verify_access` set to
-   `false`. Copy the Marketplace profile ID shown in the workflow summary.
-8. In the Marketplace publisher management page, add that profile ID as a
-   member of `ascendho` with the Contributor role.
-9. Run the identity check again with `verify_access` set to `true`. Do not create
-   a release until this check succeeds.
+7. 运行 **Check Marketplace Publishing Identity**，将 `verify_access` 设置为
+   `false`，并复制 workflow summary 中显示的 Marketplace profile ID。
+8. 在 Marketplace publisher 管理页面中，将该 profile ID 添加为 `ascendho`
+   的 Contributor。
+9. 再次运行身份检查，将 `verify_access` 设置为 `true`。检查成功前不要创建
+   Release。
 
-## Publish a version
+## 发布新版本
 
-1. Update `packages/vscode/package.json` to the new `X.Y.Z` version.
-2. Add the same version heading to `packages/vscode/CHANGELOG.md`.
-3. Run:
+1. 将 `packages/vscode/package.json` 更新为新的 `X.Y.Z` 版本。
+2. 在 `packages/vscode/CHANGELOG.md` 中添加相同的版本标题。
+3. 运行：
 
    ```bash
    pnpm check
@@ -84,23 +81,8 @@ store a Personal Access Token.
    pnpm package:vscode
    ```
 
-4. Merge the release commit into `main`.
-5. Create and publish a GitHub Release whose tag is exactly `vX.Y.Z`.
+4. 将 release commit 合并到 `main`。
+5. 创建并发布 Tag 恰好为 `vX.Y.Z` 的 GitHub Release。
 
-The release workflow repeats all checks, attaches `threadrelink.vsix`, and
-publishes the same package to the Marketplace. Duplicate workflow retries are
-safe because publishing uses `--skip-duplicate`.
-
-## First Marketplace installation
-
-The development VSIX used the old extension ID
-`ascendho.threadrelink-vscode`. Uninstall it once, then install the Marketplace
-edition:
-
-```bash
-code --uninstall-extension ascendho.threadrelink-vscode
-code --install-extension ascendho.threadrelink
-```
-
-This changes only the installed extension identity. ThreadRelink's registry,
-stable project UUIDs, and Codex conversation files are preserved.
+Release 工作流会重新执行全部检查、附加 `threadrelink.vsix`，并将同一个包发布到
+Marketplace。发布命令使用 `--skip-duplicate`，因此重复运行工作流是安全的。

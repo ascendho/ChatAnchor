@@ -8,8 +8,8 @@
 
 <p align="center">
   <a href="https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml"><img src="https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/visual-studio-marketplace/v/ascendho.threadrelink?label=Marketplace&logo=visualstudiocode" alt="Visual Studio Marketplace version"></a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/visual-studio-marketplace/i/ascendho.threadrelink?logo=visualstudiocode" alt="Visual Studio Marketplace installs"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/badge/VS_Code-Marketplace-007ACC?logo=visualstudiocode&logoColor=white" alt="Get ThreadRelink from the VS Code Marketplace"></a>
+  <a href="https://github.com/ascendho/ThreadRelink/releases/latest"><img src="https://img.shields.io/github/v/release/ascendho/ThreadRelink?label=Release" alt="Latest GitHub release"></a>
   <a href="https://github.com/ascendho/ThreadRelink/blob/main/LICENSE"><img src="https://img.shields.io/github/license/ascendho/ThreadRelink" alt="MIT License"></a>
 </p>
 
@@ -64,16 +64,6 @@ codex resume --cd <current-project-path> <thread-id>
 
 An unconfigured project never displays all global conversations. A nested
 folder also never inherits a parent Git project without an explicit choice.
-
-## Upgrading from RepoRecall
-
-ThreadRelink migrates valid RepoRecall registry, Git project IDs, and directory
-identity files while preserving their UUIDs. Existing ThreadRelink data is
-never overwritten, and legacy files remain as a rollback copy.
-
-This renamed extension has a new extension ID. Remove the old RepoRecall VSIX
-after installing ThreadRelink to avoid duplicate Activity Bar entries. Metadata
-consent is requested again for the new extension.
 
 ## Privacy
 

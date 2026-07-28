@@ -13,6 +13,7 @@ interface WalkthroughStep {
 interface ExtensionManifest {
   name: string;
   displayName: string;
+  description: string;
   version: string;
   icon: string;
   pricing: string;
@@ -44,6 +45,9 @@ describe("VS Code extension manifest", () => {
     expect(manifest.name).toBe("threadrelink");
     expect(manifest.publisher).toBe("ascendho");
     expect(manifest.displayName).toBe("ThreadRelink");
+    expect(manifest.description).toBe(
+      "A VS Code extension that keeps local Codex conversations discoverable after a repository is renamed or moved.",
+    );
     expect(manifest.version).toMatch(/^\d+\.\d+\.\d+$/);
     expect(manifest.pricing).toBe("Free");
     expect(manifest.galleryBanner).toEqual({

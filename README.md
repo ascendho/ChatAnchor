@@ -8,8 +8,8 @@
 
 <p align="center">
   <a href="https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml"><img src="https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/visual-studio-marketplace/v/ascendho.threadrelink?label=Marketplace&logo=visualstudiocode" alt="Visual Studio Marketplace version"></a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/visual-studio-marketplace/i/ascendho.threadrelink?logo=visualstudiocode" alt="Visual Studio Marketplace installs"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/badge/VS_Code-Marketplace-007ACC?logo=visualstudiocode&logoColor=white" alt="Get ThreadRelink from the VS Code Marketplace"></a>
+  <a href="https://github.com/ascendho/ThreadRelink/releases/latest"><img src="https://img.shields.io/github/v/release/ascendho/ThreadRelink?label=Release" alt="Latest GitHub release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/ascendho/ThreadRelink" alt="MIT License"></a>
 </p>
 
@@ -105,27 +105,6 @@ codex resume --cd /new/path/finspec <thread-id>
 ThreadRelink never automatically treats a nested folder as its parent Git
 repository.
 
-## Migrating from RepoRecall
-
-ThreadRelink `0.4.0` recognizes existing RepoRecall data:
-
-- `~/.reporecall/registry.json`
-- `reporecall.projectId` in local Git configuration
-- `.reporecall/project.json`
-- `REPORECALL_HOME` and `REPORECALL_CODEX_PATH`
-
-When the new location is absent, valid legacy data is copied to the
-ThreadRelink namespace with the same project UUID. Existing new data is never
-overwritten, and legacy files remain available as a rollback copy.
-
-The renamed VS Code extension has a new extension ID. Uninstall the old
-RepoRecall VSIX after installing ThreadRelink to avoid duplicate Activity Bar
-views. VS Code asks for metadata consent again, but this does not affect Codex
-transcripts or migrated project links.
-
-Legacy `reporecall` CLI and command aliases remain available for one
-compatibility release.
-
 ## CLI
 
 Requirements:
@@ -190,8 +169,9 @@ pnpm package:vscode
 
 CI runs checks and VSIX packaging on macOS, Linux, and Windows.
 Publishing is triggered by a matching `vX.Y.Z` GitHub Release after all checks
-pass. See [Marketplace publishing](docs/MARKETPLACE_PUBLISHING.md) for the
-one-time identity setup and release procedure.
+pass. See the
+[Marketplace publishing guide (Chinese)](docs/MARKETPLACE_PUBLISHING.md) for
+the one-time identity setup and release procedure.
 
 ## License
 
