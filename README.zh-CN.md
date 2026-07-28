@@ -8,8 +8,8 @@
 
 <p align="center">
   <a href="https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml"><img src="https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/visual-studio-marketplace/v/ascendho.threadrelink?label=Marketplace&logo=visualstudiocode" alt="Visual Studio Marketplace 版本"></a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/visual-studio-marketplace/i/ascendho.threadrelink?logo=visualstudiocode" alt="Visual Studio Marketplace 安装量"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/badge/VS_Code-Marketplace-007ACC?logo=visualstudiocode&logoColor=white" alt="从 VS Code Marketplace 获取 ThreadRelink"></a>
+  <a href="https://github.com/ascendho/ThreadRelink/releases/latest"><img src="https://img.shields.io/github/v/release/ascendho/ThreadRelink?label=Release" alt="最新 GitHub Release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/ascendho/ThreadRelink" alt="MIT License"></a>
 </p>
 
@@ -94,24 +94,6 @@ codex resume --cd /new/path/finspec <thread-id>
   **Relink Previous Project Path** 手动输入旧路径。
 
 ThreadRelink 不会自动把嵌套文件夹当成父级 Git 仓库。
-
-## 从 RepoRecall 迁移
-
-ThreadRelink `0.4.0` 可以识别以下旧数据：
-
-- `~/.reporecall/registry.json`
-- Git 本地配置中的 `reporecall.projectId`
-- `.reporecall/project.json`
-- `REPORECALL_HOME` 和 `REPORECALL_CODEX_PATH`
-
-如果新位置还没有数据，ThreadRelink 会验证旧数据，并使用相同 UUID 将其复制到
-新命名空间。已有的新数据不会被覆盖，旧文件也会保留，方便回退。
-
-新版 VS Code 扩展使用新的扩展 ID。安装 ThreadRelink 后，请卸载旧的 RepoRecall
-VSIX，避免活动栏同时出现两个入口。VS Code 会重新询问一次元数据授权，但这不会
-影响 Codex 聊天文件和已经迁移的项目关联。
-
-旧的 `reporecall` CLI 和命令别名会继续兼容一个版本。
 
 ## CLI
 
