@@ -6,6 +6,13 @@
   <img src="packages/vscode/resources/threadrelink.png" width="144" alt="ThreadRelink logo">
 </p>
 
+<p align="center">
+  <a href="https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml"><img src="https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/visual-studio-marketplace/v/ascendho.threadrelink?label=Marketplace&logo=visualstudiocode" alt="Visual Studio Marketplace 版本"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/visual-studio-marketplace/i/ascendho.threadrelink?logo=visualstudiocode" alt="Visual Studio Marketplace 安装量"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/ascendho/ThreadRelink" alt="MIT License"></a>
+</p>
+
 ThreadRelink 是一个本地 VS Code 扩展和 CLI。项目文件夹改名或移动后，它仍然
 可以把原来的 Codex 对话连接到这个项目。
 
@@ -18,13 +25,22 @@ Codex 会记录对话开始时的工作目录。例如把 `toolspec` 改成 `fin
 
 ## VS Code 图文使用方法
 
-### 1. 安装 VSIX
+### 1. 从插件市场安装
 
-在 VS Code 中按 `⌘⇧P`（Windows/Linux 为 `Ctrl+Shift+P`），运行
+在 VS Code 扩展页面搜索 **ThreadRelink**，或者运行：
+
+```bash
+code --install-extension ascendho.threadrelink
+```
+
+只要 VS Code 没有关闭扩展自动更新，通过 Marketplace 安装后就会自动获得新版。
+
+本地开发或离线安装时，先运行 `pnpm package:vscode`。然后按
+`⌘⇧P`（Windows/Linux 为 `Ctrl+Shift+P`），运行
 **Extensions: Install from VSIX...**，选择
 `packages/vscode/threadrelink.vsix`。
 
-![安装 ThreadRelink VSIX](packages/vscode/media/guide/01-install-vsix.png)
+![安装本地 ThreadRelink VSIX](packages/vscode/media/guide/01-install-vsix.png)
 
 ### 2. 打开 ThreadRelink
 
@@ -156,6 +172,8 @@ pnpm package:vscode
 ```
 
 CI 会在 macOS、Linux 和 Windows 上运行检查并打包 VSIX。
+只有版本匹配的 `vX.Y.Z` GitHub Release 才会触发 Marketplace 发布。一次性身份
+配置和后续发布步骤见 [Marketplace 发布指南](docs/MARKETPLACE_PUBLISHING.md)。
 
 ## License
 

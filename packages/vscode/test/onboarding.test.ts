@@ -7,8 +7,8 @@ import {
 
 describe("onboarding", () => {
   it("builds the VS Code walkthrough target from the installed extension ID", () => {
-    expect(walkthroughTarget("ascendho.threadrelink-vscode")).toBe(
-      "ascendho.threadrelink-vscode#threadrelink.gettingStarted",
+    expect(walkthroughTarget("ascendho.threadrelink")).toBe(
+      "ascendho.threadrelink#threadrelink.gettingStarted",
     );
   });
 

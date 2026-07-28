@@ -6,6 +6,7 @@
 - Preserve RepoRecall registry and project UUIDs through automatic migration.
 - Split English and Simplified Chinese documentation.
 - Refresh VS Code branding and packaging.
+- Prepare Marketplace publishing and automatic extension updates.
 
 ## 0.2.0
 
