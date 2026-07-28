@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { matchThreadToProject } from "../src/matcher.js";
 import type {
   ProjectRecord,
+  ThreadLink,
   ThreadMetadata,
 } from "../src/types.js";
 
@@ -41,6 +42,27 @@ function thread(overrides: Partial<ThreadMetadata> = {}): ThreadMetadata {
     cliVersion: "0.145.0",
     modelProvider: "openai",
     gitInfo: null,
+    ...overrides,
+  };
+}
+
+function link(overrides: Partial<ThreadLink> = {}): ThreadLink {
+  return {
+    provider: "codex",
+    threadId: "thread-1",
+    projectId: "project-old",
+    linkedBy: "automatic",
+    originalCwd: "/repo/ToolSpec",
+    relativeCwd: "",
+    evidence: [
+      {
+        kind: "path-alias",
+        confidence: 1,
+        description: "Legacy automatic path match.",
+      },
+    ],
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
     ...overrides,
   };
 }
@@ -101,5 +123,53 @@ describe("conversation matching", () => {
 
     expect(result.status).toBe("suggested");
     expect(result.evidence[0]?.confidence).toBeLessThan(0.9);
+  });
+
+  it("repairs an automatic link to another project when a path alias matches", async () => {
+    const result = await matchThreadToProject(thread(), {
+      project,
+      existingLink: link(),
+      gitRoot: "/repo/FinSpec",
+      shaExists: async () => false,
+    });
+
+    expect(result.status).toBe("linked");
+    expect(result.projectId).toBe(project.id);
+    expect(result.evidence[0]?.kind).toBe("path-alias");
+  });
+
+  it("does not automatically replace a manual link to another project", async () => {
+    const result = await matchThreadToProject(thread(), {
+      project,
+      existingLink: link({ linkedBy: "manual" }),
+      gitRoot: "/repo/FinSpec",
+      shaExists: async () => false,
+    });
+
+    expect(result.status).toBe("unlinked");
+    expect(result.projectId).toBeNull();
+    expect(result.evidence[0]?.description).toContain("manually linked");
+  });
+
+  it("rejects a broad path alias when the recorded Git remote conflicts", async () => {
+    const result = await matchThreadToProject(
+      thread({
+        cwd: "/repo/ToolSpec/nested-project",
+        gitInfo: {
+          branch: "main",
+          originUrl: "https://github.com/ascendho/other-project.git",
+          sha: null,
+        },
+      }),
+      {
+        project,
+        existingLink: null,
+        gitRoot: "/repo/FinSpec",
+        shaExists: async () => false,
+      },
+    );
+
+    expect(result.status).toBe("unlinked");
+    expect(result.projectId).toBeNull();
   });
 });
