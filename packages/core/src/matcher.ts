@@ -33,35 +33,47 @@ export async function matchThreadToProject(
   context: MatchContext,
 ): Promise<MatchDecision> {
   const { project, existingLink } = context;
-  if (existingLink) {
-    if (existingLink.projectId === project.id) {
-      return decision(
-        thread,
-        "linked",
-        project.id,
-        [
-          {
-            kind: "stored-link",
-            confidence: 1,
-            description: "Conversation was already linked to this ThreadRelink project.",
-          },
-        ],
-        existingLink.relativeCwd,
-      );
-    }
+  if (existingLink?.projectId === project.id) {
+    return decision(
+      thread,
+      "linked",
+      project.id,
+      [
+        {
+          kind: "stored-link",
+          confidence: 1,
+          description: "Conversation was already linked to this ThreadRelink project.",
+        },
+      ],
+      existingLink.relativeCwd,
+    );
+  }
+  if (existingLink?.linkedBy === "manual") {
     return decision(thread, "unlinked", null, [
       {
         kind: "stored-link",
         confidence: 1,
-        description: "Conversation is already linked to another ThreadRelink project.",
+        description:
+          "Conversation was manually linked to another ThreadRelink project.",
       },
     ]);
   }
 
+  const threadRemote = thread.gitInfo?.originUrl
+    ? normalizeRemoteUrl(thread.gitInfo.originUrl)
+    : null;
+  const remoteMatches = Boolean(
+    threadRemote && project.remotes.includes(threadRemote),
+  );
+  const remoteConflicts = Boolean(
+    threadRemote
+    && project.remotes.length > 0
+    && !remoteMatches,
+  );
   const matchingAlias = project.aliases.find((alias) =>
     isPathInside(thread.cwd, alias.path)
   );
-  if (matchingAlias) {
+  if (matchingAlias && !remoteConflicts) {
     return decision(
       thread,
       "linked",
@@ -77,12 +89,6 @@ export async function matchThreadToProject(
     );
   }
 
-  const threadRemote = thread.gitInfo?.originUrl
-    ? normalizeRemoteUrl(thread.gitInfo.originUrl)
-    : null;
-  const remoteMatches = Boolean(
-    threadRemote && project.remotes.includes(threadRemote),
-  );
   const shaMatches = Boolean(
     context.gitRoot
     && thread.gitInfo?.sha
@@ -126,6 +132,17 @@ export async function matchThreadToProject(
         kind: "basename",
         confidence: 0.35,
         description: "The old cwd has the same directory name; confirmation is required.",
+      },
+    ]);
+  }
+
+  if (existingLink) {
+    return decision(thread, "unlinked", null, [
+      {
+        kind: "stored-link",
+        confidence: 1,
+        description:
+          "Conversation has an automatic link to another ThreadRelink project and no stronger evidence was found.",
       },
     ]);
   }

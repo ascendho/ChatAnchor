@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.1
+
+- Repair stale automatic conversation links when the current project has
+  stronger path or Git evidence.
+- Preserve manual links while preventing broad parent repositories from
+  claiming conversations with conflicting Git remotes.
+
 ## 0.4.0
 
 - Rename the project and public interfaces to ThreadRelink.

@@ -159,6 +159,81 @@ describe("ThreadRelinkService", () => {
       .toEqual(expect.arrayContaining([oldRoot, newRoot]));
   });
 
+  it("moves a stale automatic link when the current project has stronger evidence", async () => {
+    const base = await mkdtemp(join(tmpdir(), "threadrelink-stale-link-"));
+    cleanup.push(base);
+    const root = join(base, "internship-notes");
+    const registryHome = join(base, "state");
+    await mkdir(root);
+    await execFileAsync("git", ["init", root]);
+
+    const conversation: ThreadMetadata = {
+      provider: "codex",
+      id: "thread-stale-parent",
+      name: "Internship notes",
+      preview: "Internship notes",
+      cwd: root,
+      createdAt: 1,
+      updatedAt: 2,
+      archived: false,
+      cliVersion: "0.145.0",
+      modelProvider: "openai",
+      gitInfo: null,
+    };
+    const service = new ThreadRelinkService({
+      registryHome,
+      historyAdapterFactory: async () => adapterFor([conversation]),
+      now: () => new Date("2026-07-28T00:00:00.000Z"),
+    });
+    const currentProject = await service.initProject(root);
+    const originalCreatedAt = "2026-07-27T00:00:00.000Z";
+    await service.registry.update((draft) => {
+      draft.projects.push({
+        id: "legacy-parent",
+        name: "home",
+        kind: "git",
+        aliases: [{
+          path: base,
+          key: base,
+          firstSeenAt: originalCreatedAt,
+          lastSeenAt: originalCreatedAt,
+        }],
+        remotes: [],
+        createdAt: originalCreatedAt,
+        updatedAt: originalCreatedAt,
+      });
+      draft.threadLinks.push({
+        provider: "codex",
+        threadId: conversation.id,
+        projectId: "legacy-parent",
+        linkedBy: "automatic",
+        originalCwd: conversation.cwd,
+        relativeCwd: "internship-notes",
+        evidence: [{
+          kind: "path-alias",
+          confidence: 1,
+          description: "Legacy parent path match.",
+        }],
+        createdAt: originalCreatedAt,
+        updatedAt: originalCreatedAt,
+      });
+    });
+
+    const result = await service.sync(root);
+    const repairedLink = (await service.registry.read()).threadLinks.find(
+      (candidate) => candidate.threadId === conversation.id,
+    );
+
+    expect(result.linked.map((item) => item.thread.id))
+      .toContain(conversation.id);
+    expect(repairedLink).toMatchObject({
+      projectId: currentProject.id,
+      linkedBy: "automatic",
+      createdAt: originalCreatedAt,
+      evidence: [{ kind: "path-alias" }],
+    });
+  });
+
   it("persists an explicit relink for an otherwise unverifiable move", async () => {
     const base = await mkdtemp(join(tmpdir(), "threadrelink-relink-"));
     cleanup.push(base);
