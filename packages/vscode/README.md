@@ -1,6 +1,4 @@
-# ThreadRelink for VS Code
-
-> A [Simplified Chinese version](https://github.com/ascendho/ThreadRelink/blob/main/README.zh-CN.md) is also available.
+# ThreadRelink
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/ascendho/ThreadRelink/main/assets/threadrelink.png" width="144" alt="ThreadRelink logo">
@@ -8,176 +6,118 @@
 
 <p align="center">
   <a href="https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml"><img src="https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/badge/VS_Code-Marketplace-007ACC?logo=visualstudiocode&logoColor=white" alt="Get ThreadRelink from the VS Code Marketplace"></a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/visual-studio-marketplace/d/ascendho.threadrelink?label=Downloads&color=007ACC" alt="Visual Studio Marketplace downloads"></a>
-  <a href="https://github.com/ascendho/ThreadRelink/releases/latest"><img src="https://img.shields.io/github/v/release/ascendho/ThreadRelink?label=Release" alt="Latest GitHub release"></a>
-  <a href="https://github.com/ascendho/ThreadRelink/blob/main/LICENSE"><img src="https://img.shields.io/github/license/ascendho/ThreadRelink" alt="MIT License"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/badge/VS_Code-Marketplace-007ACC?logo=visualstudiocode&logoColor=white" alt="从 VS Code Marketplace 获取 ThreadRelink"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/visual-studio-marketplace/i/ascendho.threadrelink?label=Installs&color=007ACC" alt="Visual Studio Marketplace 安装量"></a>
+  <a href="https://github.com/ascendho/ThreadRelink/releases/latest"><img src="https://img.shields.io/github/v/release/ascendho/ThreadRelink?label=Release" alt="最新 GitHub Release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/ascendho/ThreadRelink" alt="MIT License"></a>
 </p>
 
-ThreadRelink is a local VS Code extension whose actions are all available from its sidebar, context menus, and the VS Code Command Palette. It keeps the original Codex conversations connected to a project after its folder is renamed or moved. Codex records the working directory where a conversation starts. For example, after renaming `toolspec` to `finspec`, an old conversation may disappear from a path-filtered resume list even though its chat files remain on your machine. ThreadRelink gives the project a path-independent local UUID, remembers its old and current paths, and resumes the original thread from the new location.
+ThreadRelink 是一个本地 VS Code 扩展，全部操作都可以通过侧边栏、右键菜单和 VS Code 命令面板完成。项目文件夹改名或移动后，它仍然可以把原来的 Codex 对话连接到这个项目。Codex 会记录对话开始时的工作目录。例如把 `toolspec` 改成 `finspec` 后，按路径筛选的恢复列表可能不再显示旧对话，但聊天文件实际上仍在本机。ThreadRelink 给项目分配一个不随路径变化的本地 UUID，记录新旧路径，并从新目录继续原线程。
 
-## How ThreadRelink works
+## ThreadRelink 的工作原理
 
-ThreadRelink does not move or rewrite Codex conversations. It maintains only a small local index that connects a path-independent project identity to conversation metadata already provided by Codex.
-
-```text
-Set up project
-      ↓
-Stable project UUID
-      ↓
-Read local Codex metadata
-      ↓
-Conservative matching
-      ↓
-Local ThreadRelink registry
-      ↓
-Resume the original thread at the project's current path
-```
-
-### 1. Give the project a path-independent identity
-
-When you select **Set Up This Project**, ThreadRelink creates a random UUID for the project:
-
-- A Git project stores `threadrelink.projectId` in its local `.git/config`; the value is never committed or pushed.
-- A standalone directory stores the UUID in `.threadrelink/project.json` inside that directory.
-- If the workspace is inside a larger Git repository, ThreadRelink always asks whether the project boundary is the current folder or the parent repository.
-
-The identity moves with the project folder, so renaming or moving `/work/toolspec` to `/archive/finspec` does not turn it into a new ThreadRelink project.
-
-### 2. Read metadata through the local Codex app-server
-
-After the user grants consent for the current VS Code profile and explicitly sets up the project, the extension starts the installed `codex app-server` over local standard input/output. It requests active and archived conversation listings from Codex and keeps only the metadata needed for matching: thread ID, title/preview, timestamps, original working directory, archive state, Codex version, model provider, and available Git remote and commit information.
-
-ThreadRelink does not parse transcript files or request full message bodies. It closes the app-server process after every scan.
-
-### 3. Match conservatively
-
-Evidence is handled from strongest to weakest:
-
-| Evidence | Result |
-| --- | --- |
-| Existing explicit link or a recorded cwd inside a known project path | Link automatically |
-| Matching Git remote and a recorded commit reachable in the current repository | Link automatically |
-| Only the remote or only the commit matches | Show as a suggestion for confirmation |
-| Only the old and current directory names match | Show as a low-confidence suggestion |
-| The user removed this thread from the current project | Keep it ignored until explicitly restored |
-
-If Git remotes conflict, a broad parent repository cannot claim the conversation merely because its path is nested there. ThreadRelink never auto-links from a directory name alone.
-
-### 4. Remember paths and detect a project move
-
-ThreadRelink stores project records, old and current path aliases, cached conversation metadata, confirmed links, and project-scoped ignored matches in `~/.threadrelink/registry.json`. Registry updates use a local lock and atomic file replacement.
-
-When the same UUID appears at a path that has never been recorded, ThreadRelink adds it as a new path alias. The first scan at that location produces a migration report showing the previous project path and the selected resume path for every linked conversation.
-
-### 5. Preserve the original subdirectory safely
-
-Each link can retain the conversation working directory relative to the project root. For example:
+ThreadRelink 不会移动或重写 Codex 对话。它只在本机维护一个小型索引，把不随路径变化的项目身份与 Codex 已经提供的对话元数据连接起来。
 
 ```text
-Original cwd:     /work/toolspec/packages/api
-Stored relative:  packages/api
-New project root: /archive/finspec
-Resume cwd:       /archive/finspec/packages/api
+设置项目
+   ↓
+稳定的项目 UUID
+   ↓
+读取本地 Codex 元数据
+   ↓
+保守匹配
+   ↓
+ThreadRelink 本地 registry
+   ↓
+在项目当前路径继续原对话
 ```
 
-Before resuming, ThreadRelink resolves the real filesystem path and verifies that the target still exists, is a directory, and remains inside the current project. A missing directory, a target that has become a file, `..` traversal, or a symlink escape produces a warning and safely falls back to the project root.
+### 1. 给项目一个不依赖路径的身份
 
-Finally, the extension runs `codex resume --cd <resolved-path> <thread-id>` in a VS Code integrated terminal. Codex remains fully responsible for the conversation itself.
+选择 **Set Up This Project** 后，ThreadRelink 会为项目生成随机 UUID：
 
-### 6. Keep manual corrections stable
+- Git 项目把 `threadrelink.projectId` 写入本地 `.git/config`，不会提交或推送；
+- 普通独立目录把 UUID 写入目录内的 `.threadrelink/project.json`；
+- 如果工作区位于一个更大的 Git 仓库中，一定会让用户选择当前文件夹还是父仓库才是项目边界。
 
-Removing a conversation from the current project saves an ignored match only for that project, so the next scan does not immediately add it back. Moving a conversation to another registered project creates an explicit link there and prevents the old project from reclaiming it. Restoring the conversation clears the applicable ignored match.
+这个身份会跟随项目目录移动，因此把 `/work/toolspec` 改名或移动到 `/archive/finspec` 后，ThreadRelink 仍会把它识别为同一个项目。
 
-## VS Code illustrated guide
+### 2. 通过本地 Codex app-server 读取元数据
 
-### 1. Install from the Marketplace
+用户对当前 VS Code profile 授权，并明确设置项目后，插件通过本机标准输入输出启动已安装的 `codex app-server`。它向 Codex 请求活动及已归档对话列表，只保留匹配所需的元数据：thread ID、标题/预览、时间、原工作目录、归档状态、Codex 版本、模型提供方，以及可用的 Git remote 和 commit 信息。
 
-Search for **ThreadRelink** in the VS Code Extensions view, or run:
+ThreadRelink 不会解析 transcript 文件，也不会请求完整消息正文。每次扫描结束后都会关闭 app-server 进程。
 
-```bash
-code --install-extension ascendho.threadrelink
-```
+### 3. 使用保守证据进行匹配
 
-Marketplace installations receive extension updates automatically as long as VS Code extension auto-update is enabled.
+证据按强弱处理：
 
-> `pnpm` is development tooling for contributors and offline package builders, not a ThreadRelink user CLI. Marketplace users do not need to run it.
-
-For local development or offline packaging, first run `pnpm package:vscode`. Then press `⌘⇧P` (`Ctrl+Shift+P` on Windows/Linux), run **Extensions: Install from VSIX...**, and select `packages/vscode/threadrelink.vsix`.
-
-![Install a local ThreadRelink VSIX](https://raw.githubusercontent.com/ascendho/ThreadRelink/main/assets/guide/01-install-vsix.png)
-
-### 2. Open ThreadRelink
-
-Select the ThreadRelink icon in the Activity Bar. If it is hidden, right-click the Activity Bar and enable **ThreadRelink**, or run `ThreadRelink: Open Conversations View`.
-
-![Find ThreadRelink in the Activity Bar](https://raw.githubusercontent.com/ascendho/ThreadRelink/main/assets/guide/02-find-threadrelink.png)
-
-### 3. Set up the project once
-
-Open the original project and select **Set Up This Project**.
-
-- Metadata consent is requested once per VS Code profile.
-- Every new project still requires explicit setup.
-- If the folder is inside a larger Git repository, ThreadRelink always asks you to choose the project boundary.
-
-Git projects store the stable UUID in local `.git/config`; standalone directories use `.threadrelink/project.json`. Neither location contains Codex messages.
-
-![Enable metadata access and set up a project](https://raw.githubusercontent.com/ascendho/ThreadRelink/main/assets/guide/03-enable-and-initialize.png)
-
-### 4. Rename or move the folder
-
-Finish the active Codex session, close its terminal and workspace, then rename the folder from its parent directory:
-
-```bash
-mv toolspec finspec
-```
-
-Open `finspec` in VS Code. If the list does not update immediately, select the ThreadRelink refresh button.
-
-### 5. Resume the original conversation
-
-Expand **Codex Conversations**, hover the target conversation, and select the continue icon. If the original conversation started in a project subdirectory, ThreadRelink preserves that relative location after the move. If the subdirectory no longer exists, it warns and safely falls back to the project root. It then runs the following command in an integrated terminal:
-
-```bash
-codex resume --cd /new/path/finspec <thread-id>
-```
-
-![Resume a conversation after the rename](https://raw.githubusercontent.com/ascendho/ThreadRelink/main/assets/guide/04-resume-after-rename.png)
-
-![The original thread running at the new path](https://raw.githubusercontent.com/ascendho/ThreadRelink/main/assets/guide/05-resumed-terminal.png)
-
-## What appears in the sidebar
-
-- An unconfigured folder shows only setup actions, not global conversations.
-- The main **Conversations** section contains only conversations linked to the current project.
-- Suggested and unrelated conversations appear only after you explicitly run **Find Old Conversations**.
-- Right-click a linked conversation to remove and ignore it for the current project, or move it to another registered project.
-- An ignored conversation can be linked again through **Find Old Conversations**.
-- The first time a new project path is detected, a migration report shows each conversation's original and resolved directories.
-- If the folder was renamed before ThreadRelink was installed, use **Relink Previous Project Path** to enter the old path manually.
-- **Forget Project** removes only ThreadRelink identity and link records after confirmation; it never deletes Codex transcripts.
-
-ThreadRelink never automatically treats a nested folder as its parent Git repository.
-
-## Local data and privacy
-
-| ThreadRelink | Details |
+| 证据 | 处理方式 |
 | --- | --- |
-| Reads | Codex listing metadata, project identity, local paths, and Git remote and commit information |
-| Writes | The project UUID and `~/.threadrelink/registry.json` |
-| Never does | Upload data, provide telemetry, write to `~/.codex`, modify Codex databases or transcripts, or copy full message bodies |
+| 已有明确链接，或记录的 cwd 位于项目已知路径中 | 自动链接 |
+| Git remote 相同，且原对话 commit 在当前仓库中可达 | 自动链接 |
+| 只有 remote 或只有 commit 相同 | 显示候选，等待用户确认 |
+| 只有新旧目录名称相同 | 只显示低置信度候选 |
+| 用户已从当前项目移除该对话 | 保持忽略，直到用户明确恢复 |
 
-ThreadRelink does not scan conversation metadata until the project is explicitly set up and consent is granted. Registry version 1 migrates automatically to version 2 on the next update. After version 2 has been written, ThreadRelink 0.4 may no longer be able to read the registry, so downgrading is not recommended.
+如果 Git remote 冲突，即使路径处于某个大型父仓库内，也不会让父仓库误领该对话。ThreadRelink 绝不会仅凭目录名称自动关联。
 
-## Security
+### 4. 记录路径并识别项目迁移
 
-ThreadRelink runs only on your machine and has no telemetry or network service. It reads Codex conversation metadata through the local Codex app-server and stores a small project and conversation index under `~/.threadrelink`. Do not attach `registry.json`, Codex transcripts, or unredacted absolute paths to public issues. If you believe you found a security vulnerability, use [GitHub private vulnerability reporting](https://github.com/ascendho/ThreadRelink/security/advisories/new) instead of opening a public issue.
+ThreadRelink 在 `~/.threadrelink/registry.json` 中保存项目记录、新旧路径别名、缓存的对话元数据、已确认链接和项目范围内的忽略记录。更新 registry 时会使用本地锁和原子文件替换。
 
-## Feedback and contributing
+如果同一个 UUID 出现在一个从未记录过的路径，ThreadRelink 会把它添加为新路径别名。首次在该位置扫描时会生成迁移报告，列出原项目路径，以及每个已链接对话最终选择的恢复路径。
 
-[Issues](https://github.com/ascendho/ThreadRelink/issues) and [pull requests](https://github.com/ascendho/ThreadRelink/pulls) are welcome:
+### 5. 安全保留原来的相对子目录
 
-- Use Issues for reproducible bugs, feature ideas, and usability feedback; search existing issues before opening a new one.
-- Redact absolute paths from screenshots and diagnostic information, and never attach a ThreadRelink registry or Codex transcript.
-- Keep pull requests focused, explain the user impact, update relevant tests or documentation, and run `pnpm check` before submitting.
+每个链接都可以记录对话工作目录相对于项目根目录的位置，例如：
+
+```text
+原工作目录：  /work/toolspec/packages/api
+保存的相对路径：packages/api
+新项目根目录：/archive/finspec
+恢复工作目录：/archive/finspec/packages/api
+```
+
+恢复前，ThreadRelink 会解析真实文件系统路径，确认目标仍然存在、确实是目录，并且没有离开当前项目。如果目录缺失、目标变成文件、包含 `..` 越界，或符号链接指向项目外部，它会显示警告并安全退回项目根目录。
+
+最后，插件在 VS Code 集成终端中运行 `codex resume --cd <解析后的路径> <thread-id>`。对话本身仍完全由 Codex 管理。
+
+### 6. 让用户纠错持续有效
+
+从当前项目移除对话时，只会为这个项目保存忽略记录，避免下一次扫描立刻把它重新加回来。把对话移动到另一个已登记项目时，会在新项目建立明确链接，并防止旧项目再次认领。恢复对话则会清除相应的忽略记录。
+
+## 侧边栏会显示什么
+
+- 未设置的文件夹只显示设置入口，不会显示全局 conversations；
+- 主 **Conversations** 区域只显示当前项目的对话；
+- 候选和无关对话只会在主动运行 **Find Old Conversations** 后出现；
+- 右键点击已链接对话，可将其从当前项目移除并忽略，或改绑到另一个已登记项目；
+- 已忽略对话可通过 **Find Old Conversations** 重新链接；
+- 首次发现新的项目路径时，会提供迁移报告，列出每个对话的原目录和恢复目录；
+- 如果安装 ThreadRelink 前已经改名，可使用 **Relink Previous Project Path** 手动输入旧路径。
+- **Forget Project** 只会在确认后删除 ThreadRelink 身份和链接，绝不会删除 Codex transcript。
+
+ThreadRelink 不会自动把嵌套文件夹当成父级 Git 仓库。
+
+## 本地数据与隐私
+
+| ThreadRelink | 具体内容 |
+| --- | --- |
+| 读取 | Codex 列表元数据、项目身份、本地路径、Git remote 和 commit 信息 |
+| 写入 | 项目 UUID 和 `~/.threadrelink/registry.json` |
+| 绝不会 | 上传数据、提供遥测、写入 `~/.codex`、修改 Codex 数据库或 transcript、复制完整消息正文 |
+
+没有明确设置项目并授权前，ThreadRelink 不会扫描对话元数据。registry version 1 会在下次更新时自动迁移到 version 2。写入 version 2 后，ThreadRelink 0.4 可能无法继续读取，因此不建议降级。
+
+## 安全
+
+ThreadRelink 只在本机运行，没有遥测或网络服务。它通过本地 Codex app-server 读取 Codex 对话元数据，并在 `~/.threadrelink` 中保存少量项目和对话索引。请勿在公开 Issue 中附加 `registry.json`、Codex transcript 或未脱敏的绝对路径。如果你认为发现了安全漏洞，请使用[GitHub 私密漏洞报告](https://github.com/ascendho/ThreadRelink/security/advisories/new)，不要创建公开 Issue。
+
+## 反馈与贡献
+
+欢迎提交 [Issue](https://github.com/ascendho/ThreadRelink/issues) 和 [Pull Request](https://github.com/ascendho/ThreadRelink/pulls)：
+
+- Issue 可用于反馈可复现的 Bug、功能建议和使用体验；提交前请先搜索已有 Issue；
+- 截图和诊断信息必须移除绝对路径，绝不要上传 ThreadRelink registry 或 Codex transcript；
+- Pull Request 应保持聚焦，说明对用户的影响，更新相关测试或文档，并在提交前运行 `pnpm check`。
