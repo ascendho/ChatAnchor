@@ -47,6 +47,10 @@ ThreadRelink opens:
 codex resume --cd <current-project-path> <thread-id>
 ```
 
+When the original conversation started in a project subdirectory, ThreadRelink
+resumes from the corresponding subdirectory at the new location. Missing or
+unsafe subdirectories fall back to the project root with a warning.
+
 ![Set up ThreadRelink](https://raw.githubusercontent.com/ascendho/ThreadRelink/main/packages/vscode/media/guide/03-enable-and-initialize.png)
 
 ![Resume after a folder rename](https://raw.githubusercontent.com/ascendho/ThreadRelink/main/packages/vscode/media/guide/04-resume-after-rename.png)
@@ -55,6 +59,12 @@ codex resume --cd <current-project-path> <thread-id>
 
 - **Find Old Conversations** shows suggested or unrelated local metadata only
   when requested.
+- **Review Ignored Conversations** restores a conversation previously removed
+  from this project.
+- Right-click a linked conversation to remove and ignore it, or move it to
+  another registered project.
+- A newly detected project location produces a one-time recovery report in the
+  ThreadRelink output.
 - **Relink Previous Project Path** associates an old absolute path when the
   project was renamed before setup.
 - **Forget Project** removes only ThreadRelink identity and link records after

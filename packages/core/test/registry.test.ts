@@ -27,7 +27,7 @@ describe("RegistryStore", () => {
     const store = new RegistryStore(home);
 
     const initial = await store.read();
-    expect(initial.schemaVersion).toBe(1);
+    expect(initial.schemaVersion).toBe(2);
 
     await store.update((registry) => {
       registry.projects.push({
@@ -43,7 +43,56 @@ describe("RegistryStore", () => {
 
     expect((await store.read()).projects).toHaveLength(1);
     expect(JSON.parse(await readFile(store.registryPath, "utf8")).schemaVersion)
+      .toBe(2);
+  });
+
+  it("normalizes a version 1 registry and persists version 2 on update", async () => {
+    const home = await mkdtemp(join(tmpdir(), "threadrelink-registry-v1-"));
+    cleanup.push(home);
+    const registryPath = join(home, "registry.json");
+    await writeFile(
+      registryPath,
+      `${JSON.stringify({
+        schemaVersion: 1,
+        projects: [],
+        threads: [],
+        threadLinks: [],
+      })}\n`,
+      "utf8",
+    );
+    const store = new RegistryStore(home);
+
+    expect(await store.read()).toMatchObject({
+      schemaVersion: 2,
+      threadExclusions: [],
+    });
+    expect(JSON.parse(await readFile(registryPath, "utf8")).schemaVersion)
       .toBe(1);
+
+    await store.update(() => undefined);
+    expect(JSON.parse(await readFile(registryPath, "utf8"))).toMatchObject({
+      schemaVersion: 2,
+      threadExclusions: [],
+    });
+  });
+
+  it("rejects registries created by an unsupported future version", async () => {
+    const home = await mkdtemp(join(tmpdir(), "threadrelink-registry-future-"));
+    cleanup.push(home);
+    await writeFile(
+      join(home, "registry.json"),
+      `${JSON.stringify({
+        schemaVersion: 99,
+        projects: [],
+        threads: [],
+        threadLinks: [],
+      })}\n`,
+      "utf8",
+    );
+
+    await expect(new RegistryStore(home).read()).rejects.toMatchObject({
+      code: "UNSUPPORTED_REGISTRY_VERSION",
+    });
   });
 
   it("copies a valid legacy registry without deleting the original", async () => {

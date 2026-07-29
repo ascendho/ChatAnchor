@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { basename } from "node:path";
+import { stat } from "node:fs/promises";
+import { basename, resolve } from "node:path";
 import { CodexAppServerClient, runCodexResume } from "./codex.js";
 import { ThreadRelinkError } from "./errors.js";
 import {
@@ -36,9 +37,13 @@ import type {
   ProjectProbe,
   ProjectRecord,
   RegistryFile,
+  RelocationReport,
+  ResumeTarget,
   RelinkResult,
   SetupMode,
   SyncResult,
+  ThreadCorrectionResult,
+  ThreadExclusion,
   ThreadLink,
   ThreadMetadata,
 } from "./types.js";
@@ -53,6 +58,11 @@ export interface ThreadRelinkServiceOptions {
 
 /** @deprecated Use ThreadRelinkServiceOptions. */
 export type RepoRecallServiceOptions = ThreadRelinkServiceOptions;
+
+interface RelocationObservation {
+  previousPath: string;
+  currentPath: string;
+}
 
 function upsertProject(
   registry: RegistryFile,
@@ -131,6 +141,33 @@ function makeThreadLink(
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   };
+}
+
+function upsertExclusion(
+  exclusions: ThreadExclusion[],
+  threadId: string,
+  projectId: string,
+  createdAt: string,
+): void {
+  if (
+    exclusions.some((item) =>
+      item.threadId === threadId && item.projectId === projectId
+    )
+  ) {
+    return;
+  }
+  exclusions.push({
+    provider: "codex",
+    threadId,
+    projectId,
+    createdAt,
+  });
+}
+
+function conversationTitle(thread: ThreadMetadata): string {
+  return (thread.name ?? thread.preview ?? thread.id)
+    .replace(/\s+/gu, " ")
+    .trim();
 }
 
 export class ThreadRelinkService {
@@ -337,7 +374,11 @@ export class ThreadRelinkService {
 
   private async readyProject(
     inputPath: string,
-  ): Promise<{ project: ProjectRecord; context: GitProjectContext }> {
+  ): Promise<{
+    project: ProjectRecord;
+    context: GitProjectContext;
+    relocation: RelocationObservation | null;
+  }> {
     const probe = await this.probeProject(inputPath);
     if (probe.state !== "ready" || !probe.project || !probe.projectId) {
       const detail = probe.state === "parent-choice-required"
@@ -375,11 +416,23 @@ export class ThreadRelinkService {
     }
 
     const timestamp = this.now().toISOString();
-    const observedRoot =
-      probe.project.kind === "git"
-      && probe.identitySource === "folder-file"
-        ? context.root
-        : normalizeAbsolutePath(inputPath);
+    const observedRoot = probe.project.kind === "git"
+      ? context.root
+      : probe.workspacePath;
+    const observedKey = pathKey(observedRoot);
+    const previousAlias = [...probe.project.aliases]
+      .filter((alias) => alias.key !== observedKey)
+      .sort((left, right) =>
+        Date.parse(right.lastSeenAt) - Date.parse(left.lastSeenAt)
+      )[0];
+    const relocation =
+      !probe.project.aliases.some((alias) => alias.key === observedKey)
+      && previousAlias
+        ? {
+            previousPath: previousAlias.path,
+            currentPath: observedRoot,
+          }
+        : null;
     let project = probe.project;
     await this.registry.update((draft) => {
       project = structuredClone(
@@ -392,11 +445,109 @@ export class ThreadRelinkService {
         ),
       );
     });
-    return { project, context };
+    return { project, context, relocation };
+  }
+
+  private async resolveResumeTargetForLink(
+    threadId: string,
+    projectId: string,
+    projectRoot: string,
+    relativeCwd: string | null,
+  ): Promise<ResumeTarget> {
+    const root = await canonicalizeExistingPath(projectRoot);
+    const base = {
+      threadId,
+      projectId,
+      projectRoot: root,
+      relativeCwd,
+    };
+    if (!relativeCwd) {
+      return {
+        ...base,
+        path: root,
+        mode: "project-root",
+        warning: null,
+      };
+    }
+
+    const candidate = resolve(root, ...relativeCwd.split("/"));
+    if (!isPathInside(candidate, root)) {
+      return {
+        ...base,
+        path: root,
+        mode: "unsafe-subdirectory-fallback",
+        warning:
+          `The recorded subdirectory “${relativeCwd}” escapes the current project. Resuming from the project root instead.`,
+      };
+    }
+
+    let canonicalCandidate: string;
+    let candidateIsDirectory: boolean;
+    try {
+      canonicalCandidate = await canonicalizeExistingPath(candidate);
+      candidateIsDirectory = (await stat(canonicalCandidate)).isDirectory();
+    } catch {
+      return {
+        ...base,
+        path: root,
+        mode: "missing-subdirectory-fallback",
+        warning:
+          `The recorded subdirectory “${relativeCwd}” no longer exists. Resuming from the project root instead.`,
+      };
+    }
+    if (!isPathInside(canonicalCandidate, root)) {
+      return {
+        ...base,
+        path: root,
+        mode: "unsafe-subdirectory-fallback",
+        warning:
+          `The recorded subdirectory “${relativeCwd}” resolves outside the current project. Resuming from the project root instead.`,
+      };
+    }
+    if (!candidateIsDirectory) {
+      return {
+        ...base,
+        path: root,
+        mode: "not-directory-fallback",
+        warning:
+          `The recorded subdirectory “${relativeCwd}” is no longer a directory. Resuming from the project root instead.`,
+      };
+    }
+    return {
+      ...base,
+      path: canonicalCandidate,
+      mode: "preserved-subdirectory",
+      warning: null,
+    };
+  }
+
+  public async resolveResumeTarget(
+    threadId: string,
+    inputPath = process.cwd(),
+  ): Promise<ResumeTarget> {
+    const { project, context } = await this.readyProject(inputPath);
+    const registry = await this.registry.read();
+    const link = registry.threadLinks.find(
+      (candidate) =>
+        candidate.threadId === threadId
+        && candidate.projectId === project.id,
+    );
+    if (!link) {
+      throw new ThreadRelinkError(
+        "THREAD_NOT_LINKED",
+        `Codex conversation ${threadId} is not linked to ${project.name}.`,
+      );
+    }
+    return this.resolveResumeTargetForLink(
+      threadId,
+      project.id,
+      context.root,
+      link.relativeCwd,
+    );
   }
 
   public async sync(inputPath = process.cwd()): Promise<SyncResult> {
-    const { project, context } = await this.readyProject(inputPath);
+    const { project, context, relocation } = await this.readyProject(inputPath);
     const adapter = await this.historyAdapterFactory();
     let threads: ThreadMetadata[];
     try {
@@ -408,6 +559,12 @@ export class ThreadRelinkService {
     const registry = await this.registry.read();
     const linkByThread = new Map(
       registry.threadLinks.map((link) => [link.threadId, link]),
+    );
+    const exclusions = new Map(
+      registry.threadExclusions.map((item) => [
+        `${item.threadId}\0${item.projectId}`,
+        item,
+      ]),
     );
     const shaCache = new Map<string, Promise<boolean>>();
     const shaExists = (sha: string): Promise<boolean> => {
@@ -427,31 +584,82 @@ export class ThreadRelinkService {
         matchThreadToProject(thread, {
           project,
           existingLink: linkByThread.get(thread.id) ?? null,
+          exclusion:
+            exclusions.get(`${thread.id}\0${project.id}`) ?? null,
           gitRoot: context.kind === "git" ? context.root : null,
           shaExists,
         })
       ),
     );
 
+    const linked = decisions.filter((item) => item.status === "linked");
+    const suggested = decisions.filter((item) => item.status === "suggested");
+    const ignored = decisions.filter((item) => item.status === "ignored");
+    const unlinked = decisions.filter((item) => item.status === "unlinked");
     const timestamp = this.now().toISOString();
     await this.registry.update((draft) => {
       upsertSnapshots(draft, threads);
       const links = new Map(
         draft.threadLinks.map((link) => [link.threadId, link]),
       );
-      for (const linked of decisions.filter((item) => item.status === "linked")) {
-        const existing = links.get(linked.thread.id);
-        const updated = makeThreadLink(linked, project.id, timestamp, existing);
-        links.set(linked.thread.id, updated);
+      for (const decision of linked) {
+        const existing = links.get(decision.thread.id);
+        const updated = makeThreadLink(
+          decision,
+          project.id,
+          timestamp,
+          existing,
+        );
+        links.set(decision.thread.id, updated);
       }
       draft.threadLinks = [...links.values()];
     });
 
+    let relocationReport: RelocationReport | null = null;
+    if (relocation) {
+      const conversations = await Promise.all(
+        linked.map(async (decision) => {
+          const target = await this.resolveResumeTargetForLink(
+            decision.thread.id,
+            project.id,
+            context.root,
+            decision.relativeCwd,
+          );
+          return {
+            threadId: decision.thread.id,
+            title: conversationTitle(decision.thread),
+            originalCwd: decision.thread.cwd,
+            relativeCwd: decision.relativeCwd,
+            targetPath: target.path,
+            targetMode: target.mode,
+            evidence: decision.evidence[0]?.description ?? null,
+          };
+        }),
+      );
+      relocationReport = {
+        projectId: project.id,
+        projectName: project.name,
+        previousPath: relocation.previousPath,
+        currentPath: relocation.currentPath,
+        detectedAt: timestamp,
+        linkedThreads: linked.length,
+        preservedSubdirectories: conversations.filter(
+          (item) => item.targetMode === "preserved-subdirectory",
+        ).length,
+        fallbackThreads: conversations.filter(
+          (item) => item.targetMode.endsWith("-fallback"),
+        ).length,
+        conversations,
+      };
+    }
+
     return {
       project,
-      linked: decisions.filter((item) => item.status === "linked"),
-      suggested: decisions.filter((item) => item.status === "suggested"),
-      unlinked: decisions.filter((item) => item.status === "unlinked"),
+      linked,
+      suggested,
+      ignored,
+      unlinked,
+      relocationReport,
       scannedAt: timestamp,
     };
   }
@@ -473,6 +681,39 @@ export class ThreadRelinkService {
         `Codex conversation not found: ${threadId}`,
       );
     }
+    const result = await this.linkThreadToProject(threadId, project.id);
+    if (!result.link) {
+      throw new ThreadRelinkError(
+        "THREAD_LINK_FAILED",
+        `Failed to link Codex conversation ${threadId}.`,
+      );
+    }
+    return result.link;
+  }
+
+  public async linkThreadToProject(
+    threadId: string,
+    projectId: string,
+  ): Promise<ThreadCorrectionResult> {
+    const registry = await this.registry.read();
+    const thread = registry.threads.find((candidate) =>
+      candidate.id === threadId
+    );
+    if (!thread) {
+      throw new ThreadRelinkError(
+        "THREAD_NOT_FOUND",
+        `Codex conversation not found: ${threadId}`,
+      );
+    }
+    const project = registry.projects.find((candidate) =>
+      candidate.id === projectId
+    );
+    if (!project) {
+      throw new ThreadRelinkError(
+        "PROJECT_NOT_FOUND",
+        `ThreadRelink project not found: ${projectId}`,
+      );
+    }
 
     const timestamp = this.now().toISOString();
     const evidence: LinkEvidence[] = [
@@ -482,36 +723,106 @@ export class ThreadRelinkService {
         description: "User explicitly linked this conversation.",
       },
     ];
-    const matchingAlias = project.aliases.find((alias) =>
-      isPathInside(thread.cwd, alias.path)
+    const matchingAlias = [...project.aliases]
+      .sort((left, right) => right.path.length - left.path.length)
+      .find((alias) => isPathInside(thread.cwd, alias.path));
+    const previous = registry.threadLinks.find((candidate) =>
+      candidate.threadId === threadId
     );
     const link: ThreadLink = {
       provider: "codex",
       threadId,
-      projectId: project.id,
+      projectId,
       linkedBy: "manual",
       originalCwd: thread.cwd,
       relativeCwd: matchingAlias
         ? relativeToRoot(thread.cwd, matchingAlias.path)
         : null,
       evidence,
-      createdAt: timestamp,
+      createdAt: previous?.createdAt ?? timestamp,
       updatedAt: timestamp,
     };
 
-    await this.registry.update((draft) => {
-      const existing = draft.threadLinks.find(
-        (candidate) => candidate.threadId === threadId,
-      );
-      if (existing) {
-        link.createdAt = existing.createdAt;
+    const updated = await this.registry.update((draft) => {
+      if (previous && previous.projectId !== projectId) {
+        upsertExclusion(
+          draft.threadExclusions,
+          threadId,
+          previous.projectId,
+          timestamp,
+        );
       }
       draft.threadLinks = draft.threadLinks.filter(
         (candidate) => candidate.threadId !== threadId,
       );
       draft.threadLinks.push(link);
+      draft.threadExclusions = draft.threadExclusions.filter(
+        (candidate) =>
+          candidate.threadId !== threadId
+          || candidate.projectId !== projectId,
+      );
     });
-    return link;
+    return {
+      threadId,
+      previousProjectId: previous?.projectId ?? null,
+      currentProjectId: projectId,
+      link,
+      exclusionProjectIds: updated.threadExclusions
+        .filter((item) => item.threadId === threadId)
+        .map((item) => item.projectId),
+    };
+  }
+
+  public async ignoreThreadForProject(
+    threadId: string,
+    projectId: string,
+  ): Promise<ThreadCorrectionResult> {
+    const registry = await this.registry.read();
+    if (!registry.threads.some((candidate) => candidate.id === threadId)) {
+      throw new ThreadRelinkError(
+        "THREAD_NOT_FOUND",
+        `Codex conversation not found: ${threadId}`,
+      );
+    }
+    if (!registry.projects.some((candidate) => candidate.id === projectId)) {
+      throw new ThreadRelinkError(
+        "PROJECT_NOT_FOUND",
+        `ThreadRelink project not found: ${projectId}`,
+      );
+    }
+    const previous = registry.threadLinks.find((candidate) =>
+      candidate.threadId === threadId
+    );
+    if (previous && previous.projectId !== projectId) {
+      throw new ThreadRelinkError(
+        "THREAD_LINKED_TO_ANOTHER_PROJECT",
+        `Codex conversation ${threadId} is linked to another project.`,
+      );
+    }
+
+    const timestamp = this.now().toISOString();
+    const updated = await this.registry.update((draft) => {
+      draft.threadLinks = draft.threadLinks.filter(
+        (candidate) =>
+          candidate.threadId !== threadId
+          || candidate.projectId !== projectId,
+      );
+      upsertExclusion(
+        draft.threadExclusions,
+        threadId,
+        projectId,
+        timestamp,
+      );
+    });
+    return {
+      threadId,
+      previousProjectId: previous?.projectId ?? null,
+      currentProjectId: null,
+      link: null,
+      exclusionProjectIds: updated.threadExclusions
+        .filter((item) => item.threadId === threadId)
+        .map((item) => item.projectId),
+    };
   }
 
   public async relink(
@@ -568,10 +879,23 @@ export class ThreadRelinkService {
           createdAt: existing?.createdAt ?? timestamp,
           updatedAt: timestamp,
         };
+        if (existing && existing.projectId !== target.id) {
+          upsertExclusion(
+            draft.threadExclusions,
+            thread.id,
+            existing.projectId,
+            timestamp,
+          );
+        }
         draft.threadLinks = draft.threadLinks.filter(
           (candidate) => candidate.threadId !== thread.id,
         );
         draft.threadLinks.push(link);
+        draft.threadExclusions = draft.threadExclusions.filter(
+          (candidate) =>
+            candidate.threadId !== thread.id
+            || candidate.projectId !== target.id,
+        );
         linkedThreads += 1;
       }
       updatedProject = structuredClone(target);
@@ -693,6 +1017,9 @@ export class ThreadRelinkService {
       );
       draft.threadLinks = draft.threadLinks.filter(
         (link) => link.projectId !== projectId,
+      );
+      draft.threadExclusions = draft.threadExclusions.filter(
+        (item) => item.projectId !== projectId,
       );
     });
     return {

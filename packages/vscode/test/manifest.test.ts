@@ -83,6 +83,8 @@ describe("VS Code extension manifest", () => {
     expect(commandIds).toContain("threadrelink.openView");
     expect(commandIds).toContain("threadrelink.findOldConversations");
     expect(commandIds).toContain("threadrelink.forgetProject");
+    expect(commandIds).toContain("threadrelink.unlink");
+    expect(commandIds).toContain("threadrelink.move");
 
     for (const step of walkthrough?.steps ?? []) {
       expect(step.media.image).toMatch(/^media\/guide\/.+\.png$/);

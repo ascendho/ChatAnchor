@@ -31,7 +31,9 @@ export function formatDecision(
     .toISOString()
     .slice(0, 10);
   const archived = decision.thread.archived ? " archived" : "";
-  const confidence = decision.evidence[0]
+  const confidence =
+    decision.evidence[0]
+    && decision.evidence[0].kind !== "user-ignored"
     ? ` ${Math.round(decision.evidence[0].confidence * 100)}%`
     : "";
   const summary = `${decision.thread.id}  ${timestamp}${archived}  ${title(decision)}${confidence}`;
@@ -43,13 +45,28 @@ export function formatDecision(
 
 export function formatSyncResult(
   result: SyncResult,
-  options: { includeAll?: boolean } = {},
+  options: { includeAll?: boolean; includeIgnored?: boolean } = {},
 ): string {
-  const lines = [
+  const lines: string[] = [];
+  if (result.relocationReport) {
+    const report = result.relocationReport;
+    lines.push(
+      `New project location: ${report.previousPath} -> ${report.currentPath}`,
+      `Recovered: ${report.linkedThreads}  Preserved subdirectories: ${report.preservedSubdirectories}  Root fallbacks: ${report.fallbackThreads}`,
+    );
+    for (const conversation of report.conversations) {
+      lines.push(
+        `  ${truncate(conversation.title, 54)}`,
+        `    ${conversation.originalCwd} -> ${conversation.targetPath} (${conversation.targetMode})`,
+      );
+    }
+    lines.push("");
+  }
+  lines.push(
     `ThreadRelink project: ${result.project.name} (${result.project.id})`,
     `Known paths: ${result.project.aliases.map((alias) => alias.path).join(", ")}`,
-    `Linked: ${result.linked.length}  Suggested: ${result.suggested.length}  Unlinked: ${result.unlinked.length}`,
-  ];
+    `Linked: ${result.linked.length}  Suggested: ${result.suggested.length}  Ignored: ${result.ignored.length}  Unlinked: ${result.unlinked.length}`,
+  );
 
   if (result.linked.length > 0) {
     lines.push("", "Conversations");
@@ -58,6 +75,13 @@ export function formatSyncResult(
   if (result.suggested.length > 0) {
     lines.push("", "Suggested links");
     lines.push(...result.suggested.map((item) => formatDecision(item, true)));
+  }
+  if (
+    (options.includeAll || options.includeIgnored)
+    && result.ignored.length > 0
+  ) {
+    lines.push("", "Ignored");
+    lines.push(...result.ignored.map((item) => formatDecision(item, true)));
   }
   if (options.includeAll && result.unlinked.length > 0) {
     lines.push("", "Unlinked");

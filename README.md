@@ -82,7 +82,10 @@ Open `finspec` in VS Code and refresh ThreadRelink if necessary.
 ### 5. Resume the original conversation
 
 Expand **Codex Conversations**, hover the target conversation, and select the
-continue icon. ThreadRelink opens:
+continue icon. If the original conversation started in a project subdirectory,
+ThreadRelink preserves that relative location after the move. If the
+subdirectory no longer exists, it warns and safely uses the project root.
+ThreadRelink opens:
 
 ```bash
 codex resume --cd /new/path/finspec <thread-id>
@@ -99,6 +102,11 @@ codex resume --cd /new/path/finspec <thread-id>
   project.
 - Suggested and unrelated conversations are available only through
   **Find Old Conversations**.
+- Right-click a linked conversation to remove and ignore it for this project,
+  or move it to another registered project. Ignored conversations can be
+  restored from **Find Old Conversations**.
+- The first sync at a newly detected project path offers a recovery report with
+  the original and resolved working directory for each linked conversation.
 - If the folder was renamed before ThreadRelink was installed, use
   **Relink Previous Project Path** when automatic evidence is insufficient.
 
@@ -120,8 +128,12 @@ threadrelink init ./nested-folder --as-directory
 threadrelink init ./nested-folder --use-parent-repo
 threadrelink sync
 threadrelink list
+threadrelink list --ignored
+threadrelink link <thread-id> /path/to/project
+threadrelink unlink <thread-id> /path/to/project
 threadrelink relink --from /old/path/toolspec --to /new/path/finspec
-threadrelink resume <thread-id> --cwd /new/path/finspec
+threadrelink resume <thread-id>
+threadrelink resume <thread-id> --cwd /exact/override
 threadrelink forget /mistaken/project
 threadrelink doctor
 ```
@@ -142,6 +154,10 @@ ThreadRelink uses conservative evidence:
 `Forget Project` removes only ThreadRelink identities and links after
 confirmation. It never deletes cached conversation metadata or Codex
 transcripts.
+
+`unlink` stores a project-scoped ignored match so the conversation is not
+automatically relinked on the next sync. Linking it again removes that ignored
+match.
 
 ## Privacy
 

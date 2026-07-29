@@ -8,6 +8,7 @@ import type {
   LinkEvidence,
   MatchDecision,
   ProjectRecord,
+  ThreadExclusion,
   ThreadLink,
   ThreadMetadata,
 } from "./types.js";
@@ -15,6 +16,7 @@ import type {
 export interface MatchContext {
   project: ProjectRecord;
   existingLink: ThreadLink | null;
+  exclusion?: ThreadExclusion | null;
   gitRoot: string | null;
   shaExists: (sha: string) => Promise<boolean>;
 }
@@ -33,6 +35,16 @@ export async function matchThreadToProject(
   context: MatchContext,
 ): Promise<MatchDecision> {
   const { project, existingLink } = context;
+  if (context.exclusion) {
+    return decision(thread, "ignored", project.id, [
+      {
+        kind: "user-ignored",
+        confidence: 1,
+        description:
+          "User explicitly removed this conversation from this ThreadRelink project.",
+      },
+    ]);
+  }
   if (existingLink?.projectId === project.id) {
     return decision(
       thread,

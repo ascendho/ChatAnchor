@@ -75,7 +75,8 @@ mv toolspec finspec
 ### 5. 继续原来的聊天
 
 展开 **Codex Conversations**，将鼠标移到目标对话上并点击继续图标。
-ThreadRelink 会在集成终端中运行：
+如果原对话从项目子目录启动，ThreadRelink 会在项目移动后保留该相对目录。
+如果子目录已不存在，它会提示并安全地退回项目根目录。随后在集成终端中运行：
 
 ```bash
 codex resume --cd /new/path/finspec <thread-id>
@@ -90,6 +91,9 @@ codex resume --cd /new/path/finspec <thread-id>
 - 未设置的文件夹只显示设置入口，不会显示全局 conversations；
 - 主 **Conversations** 区域只显示当前项目的对话；
 - 候选和无关对话只会在主动运行 **Find Old Conversations** 后出现；
+- 右键点击已链接对话，可将其从当前项目移除并忽略，或改绑到另一个已登记项目；
+- 已忽略对话可通过 **Find Old Conversations** 重新链接；
+- 首次发现新的项目路径时，会提供迁移报告，列出每个对话的原目录和恢复目录；
 - 如果安装 ThreadRelink 前已经改名，可使用
   **Relink Previous Project Path** 手动输入旧路径。
 
@@ -110,8 +114,12 @@ threadrelink init ./nested-folder --as-directory
 threadrelink init ./nested-folder --use-parent-repo
 threadrelink sync
 threadrelink list
+threadrelink list --ignored
+threadrelink link <thread-id> /path/to/project
+threadrelink unlink <thread-id> /path/to/project
 threadrelink relink --from /old/path/toolspec --to /new/path/finspec
-threadrelink resume <thread-id> --cwd /new/path/finspec
+threadrelink resume <thread-id>
+threadrelink resume <thread-id> --cwd /exact/override
 threadrelink forget /mistaken/project
 threadrelink doctor
 ```
@@ -130,6 +138,9 @@ ThreadRelink 的自动匹配比较保守：
 
 `Forget Project` 只会在确认后删除 ThreadRelink 身份和链接，不会删除缓存的
 conversation 元数据或 Codex 聊天文件。
+
+`unlink` 会保存当前项目范围内的忽略记录，避免下次同步再次自动链接；以后明确
+执行 `link` 会移除对应的忽略记录。
 
 ## 隐私
 

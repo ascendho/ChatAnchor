@@ -1,6 +1,7 @@
 import type {
   MatchDecision,
   ProjectProbe,
+  RelocationReport,
   SyncResult,
 } from "@threadrelink/core";
 
@@ -38,4 +39,29 @@ export function relativeDate(unixSeconds: number, now = Date.now()): string {
     return `${deltaDays}d ago`;
   }
   return new Date(unixSeconds * 1000).toISOString().slice(0, 10);
+}
+
+export function formatRelocationReport(report: RelocationReport): string {
+  const lines = [
+    `Project location detected: ${report.projectName}`,
+    `Previous path: ${report.previousPath}`,
+    `Current path: ${report.currentPath}`,
+    `Linked conversations: ${report.linkedThreads}`,
+    `Preserved subdirectories: ${report.preservedSubdirectories}`,
+    `Root fallbacks: ${report.fallbackThreads}`,
+  ];
+  for (const conversation of report.conversations) {
+    lines.push(
+      "",
+      conversation.title,
+      `  Thread: ${conversation.threadId}`,
+      `  Original cwd: ${conversation.originalCwd}`,
+      `  Resume target: ${conversation.targetPath}`,
+      `  Target mode: ${conversation.targetMode}`,
+    );
+    if (conversation.evidence) {
+      lines.push(`  Evidence: ${conversation.evidence}`);
+    }
+  }
+  return lines.join("\n");
 }

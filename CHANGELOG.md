@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.5.0
+
+- Resume linked conversations from their preserved project-relative
+  subdirectory, with a safe project-root fallback when it no longer exists.
+- Report newly detected project locations and the recovery target selected for
+  each linked conversation.
+- Remove, ignore, restore, and move individual conversation links without
+  modifying Codex transcripts.
+- Upgrade the local registry to schema version 2 with lossless version 1
+  migration and project-scoped ignored matches.
 - Rebalance the ThreadRelink logo so the return arrow has more room and visual
   weight.
 - Clarify the VS Code extension description and document the Azure free-trial

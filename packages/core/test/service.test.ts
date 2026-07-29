@@ -7,6 +7,7 @@ import {
   realpath,
   rename,
   rm,
+  symlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -150,13 +151,17 @@ describe("ThreadRelinkService", () => {
 
     const original = await service.initProject(oldRoot);
     await service.sync(oldRoot);
+    const canonicalNewParent = await realpath(base);
     await rename(oldRoot, newRoot);
     const result = await service.sync(newRoot);
 
     expect(result.project.id).toBe(original.id);
     expect(result.linked.map((item) => item.thread.id)).toContain(oldThread.id);
     expect(result.project.aliases.map((alias) => alias.path))
-      .toEqual(expect.arrayContaining([oldRoot, newRoot]));
+      .toEqual(expect.arrayContaining([
+        oldRoot,
+        join(canonicalNewParent, "FinSpec"),
+      ]));
   });
 
   it("moves a stale automatic link when the current project has stronger evidence", async () => {
@@ -380,6 +385,187 @@ describe("ThreadRelinkService", () => {
     ).rejects.toBeDefined();
   });
 
+  it("reports a new project location and resumes from the preserved subdirectory", async () => {
+    const base = await mkdtemp(join(tmpdir(), "threadrelink-subdirectory-"));
+    cleanup.push(base);
+    const oldRoot = join(base, "ToolSpec");
+    const oldSubdirectory = join(oldRoot, "packages", "api");
+    const newRoot = join(base, "FinSpec");
+    const newSubdirectory = join(newRoot, "packages", "api");
+    await mkdir(oldSubdirectory, { recursive: true });
+    await execFileAsync("git", ["init", oldRoot]);
+    const thread: ThreadMetadata = {
+      provider: "codex",
+      id: "thread-subdirectory",
+      name: "Implement the API",
+      preview: "Implement the API",
+      cwd: oldSubdirectory,
+      createdAt: 1,
+      updatedAt: 2,
+      archived: false,
+      cliVersion: "0.145.0",
+      modelProvider: "openai",
+      gitInfo: null,
+    };
+    const service = new ThreadRelinkService({
+      registryHome: join(base, "state"),
+      historyAdapterFactory: async () => adapterFor([thread]),
+      now: () => new Date("2026-07-29T00:00:00.000Z"),
+    });
+
+    await service.setupProject(oldRoot);
+    expect((await service.sync(oldRoot)).relocationReport).toBeNull();
+    const canonicalOldRoot = await realpath(oldRoot);
+    await rename(oldRoot, newRoot);
+    const moved = await service.sync(newRoot);
+    const target = await service.resolveResumeTarget(thread.id, newRoot);
+
+    expect(moved.relocationReport).toMatchObject({
+      previousPath: canonicalOldRoot,
+      currentPath: await realpath(newRoot),
+      linkedThreads: 1,
+      preservedSubdirectories: 1,
+      fallbackThreads: 0,
+    });
+    expect(moved.relocationReport?.conversations[0]).toMatchObject({
+      threadId: thread.id,
+      relativeCwd: "packages/api",
+      targetPath: await realpath(newSubdirectory),
+      targetMode: "preserved-subdirectory",
+    });
+    expect(target).toMatchObject({
+      path: await realpath(newSubdirectory),
+      relativeCwd: "packages/api",
+      mode: "preserved-subdirectory",
+      warning: null,
+    });
+    expect((await service.sync(newRoot)).relocationReport).toBeNull();
+  });
+
+  it("falls back to the project root when a recorded subdirectory is missing or unsafe", async () => {
+    const base = await mkdtemp(join(tmpdir(), "threadrelink-resume-fallback-"));
+    cleanup.push(base);
+    const root = join(base, "project");
+    const subdirectory = join(root, "packages", "api");
+    await mkdir(subdirectory, { recursive: true });
+    await execFileAsync("git", ["init", root]);
+    const thread: ThreadMetadata = {
+      provider: "codex",
+      id: "thread-fallback",
+      name: "Fallback",
+      preview: "Fallback",
+      cwd: subdirectory,
+      createdAt: 1,
+      updatedAt: 2,
+      archived: false,
+      cliVersion: "0.145.0",
+      modelProvider: "openai",
+      gitInfo: null,
+    };
+    const service = new ThreadRelinkService({
+      registryHome: join(base, "state"),
+      historyAdapterFactory: async () => adapterFor([thread]),
+    });
+
+    await service.setupProject(root);
+    await service.sync(root);
+    await rm(subdirectory, { recursive: true });
+    expect(await service.resolveResumeTarget(thread.id, root)).toMatchObject({
+      path: await realpath(root),
+      mode: "missing-subdirectory-fallback",
+    });
+
+    const outside = join(base, "outside");
+    await mkdir(outside);
+    await symlink(
+      outside,
+      subdirectory,
+      process.platform === "win32" ? "junction" : "dir",
+    );
+    expect(await service.resolveResumeTarget(thread.id, root)).toMatchObject({
+      path: await realpath(root),
+      mode: "unsafe-subdirectory-fallback",
+    });
+    await rm(subdirectory);
+
+    await writeFile(subdirectory, "not a directory", "utf8");
+    expect(await service.resolveResumeTarget(thread.id, root)).toMatchObject({
+      path: await realpath(root),
+      mode: "not-directory-fallback",
+    });
+
+    await service.registry.update((draft) => {
+      const link = draft.threadLinks.find((item) => item.threadId === thread.id);
+      if (link) {
+        link.relativeCwd = "../../outside";
+      }
+    });
+    expect(await service.resolveResumeTarget(thread.id, root)).toMatchObject({
+      path: await realpath(root),
+      mode: "unsafe-subdirectory-fallback",
+    });
+  });
+
+  it("persists ignore, move, and restore decisions without automatic relinking", async () => {
+    const base = await mkdtemp(join(tmpdir(), "threadrelink-correction-"));
+    cleanup.push(base);
+    const projectAPath = join(base, "project-a");
+    const projectBPath = join(base, "project-b");
+    await mkdir(projectAPath);
+    await mkdir(projectBPath);
+    const thread: ThreadMetadata = {
+      provider: "codex",
+      id: "thread-correction",
+      name: "Correct project",
+      preview: "Correct project",
+      cwd: projectAPath,
+      createdAt: 1,
+      updatedAt: 2,
+      archived: false,
+      cliVersion: "0.145.0",
+      modelProvider: "openai",
+      gitInfo: null,
+    };
+    const service = new ThreadRelinkService({
+      registryHome: join(base, "state"),
+      historyAdapterFactory: async () => adapterFor([thread]),
+      now: () => new Date("2026-07-29T00:00:00.000Z"),
+    });
+    const projectA = await service.setupProject(projectAPath, "directory");
+    const projectB = await service.setupProject(projectBPath, "directory");
+    await service.sync(projectAPath);
+
+    const moved = await service.linkThreadToProject(thread.id, projectB.id);
+    expect(moved).toMatchObject({
+      previousProjectId: projectA.id,
+      currentProjectId: projectB.id,
+      link: {
+        projectId: projectB.id,
+        linkedBy: "manual",
+      },
+    });
+    expect(moved.exclusionProjectIds).toContain(projectA.id);
+    expect((await service.sync(projectAPath)).ignored).toHaveLength(1);
+    expect((await service.sync(projectBPath)).linked.map((item) => item.thread.id))
+      .toEqual([thread.id]);
+
+    const restored = await service.linkThreadToProject(thread.id, projectA.id);
+    expect(restored.exclusionProjectIds).not.toContain(projectA.id);
+    expect(restored.exclusionProjectIds).toContain(projectB.id);
+    expect((await service.sync(projectAPath)).linked.map((item) => item.thread.id))
+      .toEqual([thread.id]);
+    expect((await service.sync(projectBPath)).ignored.map((item) => item.thread.id))
+      .toEqual([thread.id]);
+
+    await service.ignoreThreadForProject(thread.id, projectA.id);
+    expect((await service.sync(projectAPath)).ignored.map((item) => item.thread.id))
+      .toEqual([thread.id]);
+    const relinked = await service.linkThreadToProject(thread.id, projectA.id);
+    expect(relinked.exclusionProjectIds).not.toContain(projectA.id);
+    expect((await service.sync(projectAPath)).linked.map((item) => item.thread.id))
+      .toEqual([thread.id]);
+  });
+
   it("forgets ThreadRelink links and identities without deleting thread snapshots", async () => {
     const base = await mkdtemp(join(tmpdir(), "threadrelink-forget-"));
     cleanup.push(base);
@@ -414,6 +600,7 @@ describe("ThreadRelinkService", () => {
     expect(result.removedLinks).toBe(1);
     expect(registry.projects).toHaveLength(0);
     expect(registry.threadLinks).toHaveLength(0);
+    expect(registry.threadExclusions).toHaveLength(0);
     expect(registry.threads.map((item) => item.id)).toEqual([thread.id]);
     await expect(
       execFileAsync("git", [

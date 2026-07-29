@@ -172,4 +172,23 @@ describe("conversation matching", () => {
     expect(result.status).toBe("unlinked");
     expect(result.projectId).toBeNull();
   });
+
+  it("keeps an explicitly ignored conversation out of automatic matching", async () => {
+    const result = await matchThreadToProject(thread(), {
+      project,
+      existingLink: null,
+      exclusion: {
+        provider: "codex",
+        threadId: "thread-1",
+        projectId: project.id,
+        createdAt: "2026-01-03T00:00:00.000Z",
+      },
+      gitRoot: "/repo/FinSpec",
+      shaExists: async () => false,
+    });
+
+    expect(result.status).toBe("ignored");
+    expect(result.projectId).toBe(project.id);
+    expect(result.evidence[0]?.kind).toBe("user-ignored");
+  });
 });

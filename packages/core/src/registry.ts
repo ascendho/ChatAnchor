@@ -47,46 +47,97 @@ const EvidenceSchema = z.object({
     "git-sha",
     "basename",
     "manual",
+    "user-ignored",
   ]),
   confidence: z.number(),
   description: z.string(),
 });
 
-const RegistrySchema = z.object({
-  schemaVersion: z.literal(REGISTRY_SCHEMA_VERSION),
-  projects: z.array(
+const ProjectSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  kind: z.enum(["git", "directory"]),
+  aliases: z.array(
     z.object({
-      id: z.string(),
-      name: z.string(),
-      kind: z.enum(["git", "directory"]),
-      aliases: z.array(
-        z.object({
-          path: z.string(),
-          key: z.string(),
-          firstSeenAt: z.string(),
-          lastSeenAt: z.string(),
-        }),
-      ),
-      remotes: z.array(z.string()),
-      createdAt: z.string(),
-      updatedAt: z.string(),
+      path: z.string(),
+      key: z.string(),
+      firstSeenAt: z.string(),
+      lastSeenAt: z.string(),
     }),
   ),
+  remotes: z.array(z.string()),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+const ThreadLinkSchema = z.object({
+  provider: z.literal("codex"),
+  threadId: z.string(),
+  projectId: z.string(),
+  linkedBy: z.enum(["automatic", "manual"]),
+  originalCwd: z.string(),
+  relativeCwd: z.string().nullable(),
+  evidence: z.array(EvidenceSchema),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+const RegistryV1Schema = z.object({
+  schemaVersion: z.literal(1),
+  projects: z.array(ProjectSchema),
   threads: z.array(ThreadMetadataSchema),
-  threadLinks: z.array(
+  threadLinks: z.array(ThreadLinkSchema),
+});
+
+const RegistrySchema = z.object({
+  schemaVersion: z.literal(REGISTRY_SCHEMA_VERSION),
+  projects: z.array(ProjectSchema),
+  threads: z.array(ThreadMetadataSchema),
+  threadLinks: z.array(ThreadLinkSchema),
+  threadExclusions: z.array(
     z.object({
       provider: z.literal("codex"),
       threadId: z.string(),
       projectId: z.string(),
-      linkedBy: z.enum(["automatic", "manual"]),
-      originalCwd: z.string(),
-      relativeCwd: z.string().nullable(),
-      evidence: z.array(EvidenceSchema),
       createdAt: z.string(),
-      updatedAt: z.string(),
     }),
   ),
 });
+
+function parseRegistry(value: unknown, path: string): RegistryFile {
+  const current = RegistrySchema.safeParse(value);
+  if (current.success) {
+    return current.data;
+  }
+
+  const legacy = RegistryV1Schema.safeParse(value);
+  if (legacy.success) {
+    return {
+      ...legacy.data,
+      schemaVersion: REGISTRY_SCHEMA_VERSION,
+      threadExclusions: [],
+    };
+  }
+
+  if (
+    value
+    && typeof value === "object"
+    && "schemaVersion" in value
+    && typeof value.schemaVersion === "number"
+    && value.schemaVersion !== 1
+    && value.schemaVersion !== REGISTRY_SCHEMA_VERSION
+  ) {
+    throw new ThreadRelinkError(
+      "UNSUPPORTED_REGISTRY_VERSION",
+      `ThreadRelink registry uses unsupported schema version ${value.schemaVersion}: ${path}`,
+    );
+  }
+
+  throw new ThreadRelinkError(
+    "INVALID_REGISTRY",
+    `ThreadRelink registry is invalid (${path}): ${current.error.message}`,
+  );
+}
 
 function emptyRegistry(): RegistryFile {
   return {
@@ -94,6 +145,7 @@ function emptyRegistry(): RegistryFile {
     projects: [],
     threads: [],
     threadLinks: [],
+    threadExclusions: [],
   };
 }
 
@@ -159,14 +211,7 @@ export class RegistryStore {
           { cause: error },
         );
       }
-      const parsed = RegistrySchema.safeParse(value);
-      if (!parsed.success) {
-        throw new ThreadRelinkError(
-          "INVALID_REGISTRY",
-          `ThreadRelink registry is invalid (${path}): ${parsed.error.message}`,
-        );
-      }
-      return parsed.data;
+      return parseRegistry(value, path);
     } catch (error) {
       if (
         error instanceof Error

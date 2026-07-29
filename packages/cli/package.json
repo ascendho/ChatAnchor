@@ -1,6 +1,6 @@
 {
   "name": "@ascendho/threadrelink",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Find and resume local Codex conversations after a repository is renamed or moved.",
   "keywords": [
     "codex",

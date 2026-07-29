@@ -1,10 +1,16 @@
-export const REGISTRY_SCHEMA_VERSION = 1 as const;
+export const REGISTRY_SCHEMA_VERSION = 2 as const;
 
 export type ProjectKind = "git" | "directory";
-export type LinkStatus = "linked" | "suggested" | "unlinked";
+export type LinkStatus = "linked" | "suggested" | "ignored" | "unlinked";
 export type LinkSource = "automatic" | "manual";
 export type SetupMode = "git-root" | "parent-git" | "directory";
 export type IdentitySource = "git-config" | "folder-file";
+export type ResumeTargetMode =
+  | "preserved-subdirectory"
+  | "project-root"
+  | "missing-subdirectory-fallback"
+  | "unsafe-subdirectory-fallback"
+  | "not-directory-fallback";
 
 export interface GitInfo {
   branch: string | null;
@@ -61,7 +67,8 @@ export interface LinkEvidence {
     | "git-remote"
     | "git-sha"
     | "basename"
-    | "manual";
+    | "manual"
+    | "user-ignored";
   confidence: number;
   description: string;
 }
@@ -78,11 +85,19 @@ export interface ThreadLink {
   updatedAt: string;
 }
 
+export interface ThreadExclusion {
+  provider: "codex";
+  threadId: string;
+  projectId: string;
+  createdAt: string;
+}
+
 export interface RegistryFile {
   schemaVersion: typeof REGISTRY_SCHEMA_VERSION;
   projects: ProjectRecord[];
   threads: ThreadMetadata[];
   threadLinks: ThreadLink[];
+  threadExclusions: ThreadExclusion[];
 }
 
 export interface MatchDecision {
@@ -97,8 +112,50 @@ export interface SyncResult {
   project: ProjectRecord;
   linked: MatchDecision[];
   suggested: MatchDecision[];
+  ignored: MatchDecision[];
   unlinked: MatchDecision[];
+  relocationReport: RelocationReport | null;
   scannedAt: string;
+}
+
+export interface ResumeTarget {
+  threadId: string;
+  projectId: string;
+  projectRoot: string;
+  path: string;
+  relativeCwd: string | null;
+  mode: ResumeTargetMode;
+  warning: string | null;
+}
+
+export interface RelocationThreadReport {
+  threadId: string;
+  title: string;
+  originalCwd: string;
+  relativeCwd: string | null;
+  targetPath: string;
+  targetMode: ResumeTargetMode;
+  evidence: string | null;
+}
+
+export interface RelocationReport {
+  projectId: string;
+  projectName: string;
+  previousPath: string;
+  currentPath: string;
+  detectedAt: string;
+  linkedThreads: number;
+  preservedSubdirectories: number;
+  fallbackThreads: number;
+  conversations: RelocationThreadReport[];
+}
+
+export interface ThreadCorrectionResult {
+  threadId: string;
+  previousProjectId: string | null;
+  currentProjectId: string | null;
+  link: ThreadLink | null;
+  exclusionProjectIds: string[];
 }
 
 export interface RelinkResult {

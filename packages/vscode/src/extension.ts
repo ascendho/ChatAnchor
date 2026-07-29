@@ -14,6 +14,7 @@ import {
 import {
   confidenceLabel,
   conversationLabel,
+  formatRelocationReport,
   relativeDate,
   type WorkspaceResult,
 } from "./view-model.js";
@@ -33,7 +34,7 @@ interface Settings {
 }
 
 interface RecoveryPick extends vscode.QuickPickItem {
-  recoveryKind: "decision" | "search";
+  recoveryKind: "decision" | "ignored" | "search";
   decision?: MatchDecision;
 }
 
@@ -273,6 +274,19 @@ export async function activate(
       try {
         workspace.sync = await service.sync(workspace.path);
         workspace.probe = await service.probeProject(workspace.path);
+        const report = workspace.sync.relocationReport;
+        if (report) {
+          output.appendLine("");
+          output.appendLine(formatRelocationReport(report));
+          void vscode.window.showInformationMessage(
+            `ThreadRelink detected a new location for ${report.projectName} and reconnected ${report.linkedThreads} conversation${report.linkedThreads === 1 ? "" : "s"}.`,
+            "View Report",
+          ).then((choice) => {
+            if (choice === "View Report") {
+              output.show(true);
+            }
+          });
+        }
       } catch (error) {
         workspace.error = errorMessage(error);
         output.appendLine(`${workspace.name}: ${errorMessage(error)}`);
@@ -388,6 +402,15 @@ export async function activate(
       );
       const firstStep: RecoveryPick[] = [
         ...suggested.map(recoveryItem),
+        ...(result.ignored.length > 0
+          ? [{
+              recoveryKind: "ignored" as const,
+              label: "$(eye) Review ignored conversations…",
+              description: `${result.ignored.length} ignored`,
+              detail:
+                "Review conversations explicitly removed from this project.",
+            }]
+          : []),
         {
           recoveryKind: "search",
           label: "$(search) Search all local conversations…",
@@ -408,6 +431,31 @@ export async function activate(
       }
       if (selected.recoveryKind === "decision" && selected.decision) {
         await confirmRecoveryLink(selected.decision, folder.uri.fsPath);
+        return;
+      }
+      if (selected.recoveryKind === "ignored") {
+        const ignoredSelected = await vscode.window.showQuickPick(
+          result.ignored
+            .sort((left, right) =>
+              right.thread.updatedAt - left.thread.updatedAt
+            )
+            .map((decision) => ({
+              ...recoveryItem(decision),
+              description: relativeDate(decision.thread.updatedAt),
+            })),
+          {
+            placeHolder: "Choose an ignored conversation to link again",
+            matchOnDescription: true,
+            matchOnDetail: true,
+            ignoreFocusOut: true,
+          },
+        );
+        if (ignoredSelected?.decision) {
+          await confirmRecoveryLink(
+            ignoredSelected.decision,
+            folder.uri.fsPath,
+          );
+        }
         return;
       }
 
@@ -470,6 +518,114 @@ export async function activate(
       const result = await service.forgetProject(projectId, workspacePaths);
       void vscode.window.showInformationMessage(
         `Forgot ${preview.project.name}: removed ${result.removedLinks} ThreadRelink link(s). No Codex conversations were deleted.`,
+      );
+      await refresh(false);
+    } catch (error) {
+      void vscode.window.showErrorMessage(`ThreadRelink: ${errorMessage(error)}`);
+    }
+  };
+
+  const removeThreadLink = async (
+    node?: ThreadRelinkTreeNode,
+  ): Promise<void> => {
+    if (node?.kind !== "thread") {
+      return;
+    }
+    const projectId =
+      node.workspace.sync?.project.id
+      ?? node.workspace.probe?.project?.id;
+    if (!projectId) {
+      return;
+    }
+    const label = conversationLabel(node.decision);
+    const choice = await vscode.window.showWarningMessage(
+      `Remove “${label}” from this project and ignore future automatic matches? This changes only ThreadRelink's local registry.`,
+      { modal: true },
+      "Remove link",
+    );
+    if (choice !== "Remove link") {
+      return;
+    }
+    try {
+      await makeService().ignoreThreadForProject(
+        node.decision.thread.id,
+        projectId,
+      );
+      void vscode.window.showInformationMessage(
+        `Removed “${label}” from this project. You can restore it from Find Old Conversations.`,
+      );
+      await refresh(false);
+    } catch (error) {
+      void vscode.window.showErrorMessage(`ThreadRelink: ${errorMessage(error)}`);
+    }
+  };
+
+  const moveThreadLink = async (
+    node?: ThreadRelinkTreeNode,
+  ): Promise<void> => {
+    if (node?.kind !== "thread") {
+      return;
+    }
+    const currentProjectId =
+      node.workspace.sync?.project.id
+      ?? node.workspace.probe?.project?.id;
+    if (!currentProjectId) {
+      return;
+    }
+    try {
+      const service = makeService();
+      const projects = (await service.listProjects()).filter(
+        (project) => project.id !== currentProjectId,
+      );
+      if (projects.length === 0) {
+        void vscode.window.showInformationMessage(
+          "Set up another ThreadRelink project before moving this conversation.",
+        );
+        return;
+      }
+      const choices = await Promise.all(projects.map(async (project) => {
+        const latestAlias = [...project.aliases].sort((left, right) =>
+          Date.parse(right.lastSeenAt) - Date.parse(left.lastSeenAt)
+        )[0];
+        let available = false;
+        if (latestAlias) {
+          try {
+            await vscode.workspace.fs.stat(vscode.Uri.file(latestAlias.path));
+            available = true;
+          } catch {
+            available = false;
+          }
+        }
+        return {
+          label: project.name,
+          description: available ? "available" : "path unavailable",
+          detail: latestAlias?.path ?? project.id,
+          projectId: project.id,
+        };
+      }));
+      const selected = await vscode.window.showQuickPick(choices, {
+        placeHolder: "Choose the project that owns this conversation",
+        matchOnDetail: true,
+        ignoreFocusOut: true,
+      });
+      if (!selected) {
+        return;
+      }
+      const label = conversationLabel(node.decision);
+      const choice = await vscode.window.showWarningMessage(
+        `Move “${label}” to ${selected.label}? The old project will ignore future automatic matches for this conversation.`,
+        { modal: true },
+        "Move conversation",
+      );
+      if (choice !== "Move conversation") {
+        return;
+      }
+      await service.linkThreadToProject(
+        node.decision.thread.id,
+        selected.projectId,
+      );
+      void vscode.window.showInformationMessage(
+        `Moved “${label}” to ${selected.label}.`,
       );
       await refresh(false);
     } catch (error) {
@@ -563,6 +719,14 @@ export async function activate(
       },
     ),
     vscode.commands.registerCommand(
+      "threadrelink.unlink",
+      removeThreadLink,
+    ),
+    vscode.commands.registerCommand(
+      "threadrelink.move",
+      moveThreadLink,
+    ),
+    vscode.commands.registerCommand(
       "threadrelink.resume",
       async (node?: ThreadRelinkTreeNode) => {
         const selected = node?.kind === "thread"
@@ -574,19 +738,32 @@ export async function activate(
         if (!selected || selected.kind !== "thread") {
           return;
         }
-        const terminal = vscode.window.createTerminal({
-          name: `ThreadRelink: ${conversationLabel(selected.decision)}`,
-          shellPath: readSettings().codexPath,
-          shellArgs: [
-            "resume",
-            "--cd",
-            selected.workspace.path,
+        try {
+          const target = await makeService().resolveResumeTarget(
             selected.decision.thread.id,
-          ],
-          cwd: selected.workspace.path,
-          iconPath: new vscode.ThemeIcon("history"),
-        });
-        terminal.show();
+            selected.workspace.path,
+          );
+          if (target.warning) {
+            void vscode.window.showWarningMessage(target.warning);
+          }
+          const terminal = vscode.window.createTerminal({
+            name: `ThreadRelink: ${conversationLabel(selected.decision)}`,
+            shellPath: readSettings().codexPath,
+            shellArgs: [
+              "resume",
+              "--cd",
+              target.path,
+              selected.decision.thread.id,
+            ],
+            cwd: target.path,
+            iconPath: new vscode.ThemeIcon("history"),
+          });
+          terminal.show();
+        } catch (error) {
+          void vscode.window.showErrorMessage(
+            `ThreadRelink: ${errorMessage(error)}`,
+          );
+        }
       },
     ),
     vscode.commands.registerCommand("threadrelink.relink", async () => {
