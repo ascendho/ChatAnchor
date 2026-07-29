@@ -14,6 +14,8 @@
   migration and project-scoped ignored matches.
 - Retire the unpublished standalone ThreadRelink CLI and focus the supported
   workflow on the VS Code interface.
+- Document the local identity, metadata matching, relocation, safe resume, and
+  privacy model in detail.
 - Rebalance the ThreadRelink logo so the return arrow has more room and visual
   weight.
 - Clarify the VS Code extension description and document the Azure free-trial

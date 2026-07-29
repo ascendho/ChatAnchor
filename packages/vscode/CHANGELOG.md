@@ -9,6 +9,8 @@
 - Show a one-time recovery report when ThreadRelink discovers a new project
   location.
 - Add per-conversation actions to remove, ignore, restore, or move a link.
+- Document the complete local identity, matching, relocation, safe resume, and
+  privacy flow.
 - Rebalance the ThreadRelink logo so the return arrow has more room and visual
   weight.
 - Describe the extension as keeping Codex conversations connected to their

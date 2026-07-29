@@ -28,6 +28,111 @@ resumes the original thread in the new working directory.
 All ThreadRelink actions are available from its sidebar, context menus, and the
 VS Code Command Palette.
 
+## How ThreadRelink works
+
+ThreadRelink does not move or rewrite a Codex conversation. It keeps a small
+local index that connects a stable project identity to the conversation
+metadata already exposed by Codex.
+
+```text
+Set up project
+      ↓
+Stable project UUID
+      ↓
+Read local Codex metadata
+      ↓
+Conservative matching
+      ↓
+Local ThreadRelink registry
+      ↓
+Resume the original thread at the project's current path
+```
+
+### 1. Give the project a path-independent identity
+
+When you select **Set Up This Project**, ThreadRelink creates a random UUID for
+that project:
+
+- A Git project stores `threadrelink.projectId` in its local `.git/config`.
+  This value is not committed or pushed.
+- A standalone directory stores the UUID in
+  `.threadrelink/project.json` inside that directory.
+- A workspace nested inside a larger Git repository always asks whether the
+  project boundary is the current folder or the parent repository.
+
+The identity moves with the project folder, so changing
+`/work/toolspec` to `/archive/finspec` does not turn it into a new
+ThreadRelink project.
+
+### 2. Read metadata through the local Codex app-server
+
+After per-profile consent and explicit project setup, the extension starts the
+installed `codex app-server` over local standard input/output. It asks Codex
+for active and archived conversation listings and keeps only the metadata
+needed for matching: thread ID, title/preview, timestamps, recorded working
+directory, archive state, Codex version, model provider, and available Git
+remote/commit information.
+
+ThreadRelink does not parse transcript files or request full message bodies.
+The app-server process is closed after each scan.
+
+### 3. Match conservatively
+
+Evidence is evaluated from strongest to weakest:
+
+| Evidence | Result |
+| --- | --- |
+| Existing explicit link or a known project path containing the recorded cwd | Link automatically |
+| Matching Git remote and a recorded commit reachable in the current repository | Link automatically |
+| Only the remote or only the commit matches | Show as a suggestion for confirmation |
+| Only the old and current directory names match | Show as a low-confidence suggestion |
+| The user removed this thread from this project | Keep it ignored until explicitly restored |
+
+A conflicting Git remote prevents a broad parent repository from claiming a
+conversation merely because its path happens to be nested there. ThreadRelink
+does not auto-link from a folder name alone.
+
+### 4. Remember paths and detect a move
+
+ThreadRelink stores project records, old and current path aliases, cached
+conversation metadata, confirmed links, and project-scoped ignored matches in
+`~/.threadrelink/registry.json`. Updates use a local lock and atomic file
+replacement.
+
+When the same UUID appears at a path that has not been seen before,
+ThreadRelink adds the path as another alias. The first scan at that location
+produces a recovery report showing the previous project path and the selected
+resume path for every linked conversation.
+
+### 5. Preserve the original subdirectory safely
+
+Each link can retain the conversation's path relative to the project root. For
+example:
+
+```text
+Original cwd:     /work/toolspec/packages/api
+Stored relative:  packages/api
+New project root: /archive/finspec
+Resume cwd:       /archive/finspec/packages/api
+```
+
+Before resuming, ThreadRelink resolves the real filesystem path and verifies
+that it still exists, is a directory, and remains inside the current project.
+A missing directory, file path, `..` traversal, or symlink escape produces a
+warning and safely falls back to the project root.
+
+Finally, the extension opens an integrated terminal and runs
+`codex resume --cd <resolved-path> <thread-id>`. Codex remains responsible for
+the conversation itself.
+
+### 6. Keep manual corrections stable
+
+Removing a conversation creates an ignored match only for the current project,
+so the next scan does not immediately add it back. Moving a conversation to
+another registered project creates an explicit link there and prevents the old
+project from reclaiming it. Restoring the conversation clears the applicable
+ignored match.
+
 ## VS Code quick start
 
 ### 1. Install from the Marketplace
@@ -41,10 +146,12 @@ code --install-extension ascendho.threadrelink
 Marketplace installations receive extension updates automatically when VS Code
 auto-update is enabled.
 
-For local development or offline installation, run `pnpm package:vscode`, then
-press `⌘⇧P` (`Ctrl+Shift+P` on Windows/Linux), select
-**Extensions: Install from VSIX...**, and choose
-`packages/vscode/threadrelink.vsix`.
+> `pnpm` is development tooling for contributors and offline package builders;
+> it is not a ThreadRelink user CLI. Marketplace users do not need it.
+
+For local development or offline packaging, run `pnpm package:vscode`, then
+press `⌘⇧P` (`Ctrl+Shift+P` on Windows/Linux), select **Extensions: Install
+from VSIX...**, and choose `packages/vscode/threadrelink.vsix`.
 
 ![Install a local ThreadRelink VSIX](packages/vscode/media/guide/01-install-vsix.png)
 
@@ -112,38 +219,26 @@ codex resume --cd /new/path/finspec <thread-id>
   the original and resolved working directory for each linked conversation.
 - If the folder was renamed before ThreadRelink was installed, use
   **Relink Previous Project Path** when automatic evidence is insufficient.
+- **Forget Project** removes only ThreadRelink identities and links after
+  confirmation; it never deletes Codex transcripts.
 
 ThreadRelink never automatically treats a nested folder as its parent Git
 repository.
 
-## How matching works
+## Local data and privacy
 
-ThreadRelink uses conservative evidence:
+| ThreadRelink | Details |
+| --- | --- |
+| Reads | Codex listing metadata, project identity, local paths, and Git remote/commit information |
+| Writes | The project UUID and `~/.threadrelink/registry.json` |
+| Never does | Upload data, provide telemetry, modify `~/.codex`, alter Codex databases/transcripts, or copy full message bodies |
 
-1. Existing explicit link or known path alias: link automatically.
-2. Matching Git remote and reachable recorded commit: link automatically.
-3. Only a remote or commit match: suggest and require confirmation.
-4. Directory-name similarity: never link automatically.
+No conversation metadata is scanned until the project is explicitly set up
+and consent is granted. Registry version 1 is read and migrated automatically
+to version 2 on the next update. After that write, ThreadRelink 0.4 may no
+longer be able to read the registry, so downgrading is not recommended.
 
-`Forget Project` removes only ThreadRelink identities and links after
-confirmation. It never deletes cached conversation metadata or Codex
-transcripts.
-
-Removing a conversation from a project stores a project-scoped ignored match
-so it is not automatically relinked on the next sync. Linking it again removes
-that ignored match.
-
-## Privacy
-
-- Reads thread ID, title/preview, timestamps, recorded cwd, archive state, and
-  Git metadata.
-- Does not copy message bodies.
-- Does not upload data and has no telemetry or hosted service.
-- Does not write to `~/.codex` or modify Codex databases.
-- Does not scan conversation metadata until a project is explicitly set up and
-  consent is granted.
-
-## Development
+## Development (contributors only)
 
 This pnpm workspace contains:
 
