@@ -3,7 +3,7 @@
 > A [Simplified Chinese version](https://github.com/ascendho/ThreadRelink/blob/main/README.zh-CN.md) is also available.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/ascendho/ThreadRelink/main/packages/vscode/resources/threadrelink.png" width="144" alt="ThreadRelink logo">
+  <img src="https://raw.githubusercontent.com/ascendho/ThreadRelink/main/assets/threadrelink.png" width="144" alt="ThreadRelink logo">
 </p>
 
 <p align="center">
@@ -14,20 +14,11 @@
   <a href="https://github.com/ascendho/ThreadRelink/blob/main/LICENSE"><img src="https://img.shields.io/github/license/ascendho/ThreadRelink" alt="MIT License"></a>
 </p>
 
-Keep local Codex conversations connected to a project after its folder is
-renamed or moved.
+ThreadRelink is a local VS Code extension whose actions are all available from its sidebar, context menus, and the VS Code Command Palette. It keeps the original Codex conversations connected to a project after its folder is renamed or moved. Codex records the working directory where a conversation starts. For example, after renaming `toolspec` to `finspec`, an old conversation may disappear from a path-filtered resume list even though its chat files remain on your machine. ThreadRelink gives the project a path-independent local UUID, remembers its old and current paths, and resumes the original thread from the new location.
 
-ThreadRelink stores a stable local project UUID and uses it to resume the
-original Codex thread at the project's current path. It is local-only, has no
-telemetry, and never modifies Codex transcripts.
+## How ThreadRelink works
 
-All ThreadRelink actions are available from the sidebar, context menus, and the
-VS Code Command Palette. It does not provide a separate ThreadRelink CLI.
-
-## How it works
-
-ThreadRelink does not move or rewrite conversations. It builds a small local
-index around metadata provided by the installed Codex app-server:
+ThreadRelink does not move or rewrite Codex conversations. It maintains only a small local index that connects a path-independent project identity to conversation metadata already provided by Codex.
 
 ```text
 Set up project
@@ -38,147 +29,155 @@ Read local Codex metadata
       ↓
 Conservative matching
       ↓
-Remember old and current paths
+Local ThreadRelink registry
       ↓
-Resume the original thread at the resolved new path
+Resume the original thread at the project's current path
 ```
 
-### Stable project identity
+### 1. Give the project a path-independent identity
 
-Selecting **Set Up This Project** creates a random UUID. Git projects store it
-as `threadrelink.projectId` in local `.git/config`; standalone directories use
-`.threadrelink/project.json`. Neither value is committed or uploaded. A nested
-workspace always asks whether its boundary is the current directory or the
-parent Git repository.
+When you select **Set Up This Project**, ThreadRelink creates a random UUID for the project:
 
-Because the identity moves with the folder, a new absolute path can still be
-recognized as the same project. ThreadRelink records both old and current paths
-as aliases and produces a one-time recovery report when it first observes the
-new location.
+- A Git project stores `threadrelink.projectId` in its local `.git/config`; the value is never committed or pushed.
+- A standalone directory stores the UUID in `.threadrelink/project.json` inside that directory.
+- If the workspace is inside a larger Git repository, ThreadRelink always asks whether the project boundary is the current folder or the parent repository.
 
-### Local metadata and conservative matching
+The identity moves with the project folder, so renaming or moving `/work/toolspec` to `/archive/finspec` does not turn it into a new ThreadRelink project.
 
-After consent and explicit project setup, ThreadRelink starts
-`codex app-server` over local standard input/output and requests active and
-archived conversation listings. It keeps thread ID, title/preview, timestamps,
-recorded cwd, archive state, Codex/model information, and available Git
-remote/commit metadata. It does not request full message bodies or parse
-transcript files.
+### 2. Read metadata through the local Codex app-server
+
+After the user grants consent for the current VS Code profile and explicitly sets up the project, the extension starts the installed `codex app-server` over local standard input/output. It requests active and archived conversation listings from Codex and keeps only the metadata needed for matching: thread ID, title/preview, timestamps, original working directory, archive state, Codex version, model provider, and available Git remote and commit information.
+
+ThreadRelink does not parse transcript files or request full message bodies. It closes the app-server process after every scan.
+
+### 3. Match conservatively
+
+Evidence is handled from strongest to weakest:
 
 | Evidence | Result |
 | --- | --- |
-| Existing explicit link or known project path | Link automatically |
-| Matching Git remote and reachable recorded commit | Link automatically |
-| Only the remote or commit matches | Ask for confirmation |
-| Only the directory name matches | Show a low-confidence suggestion |
-| User removed the thread from this project | Keep it ignored until restored |
+| Existing explicit link or a recorded cwd inside a known project path | Link automatically |
+| Matching Git remote and a recorded commit reachable in the current repository | Link automatically |
+| Only the remote or only the commit matches | Show as a suggestion for confirmation |
+| Only the old and current directory names match | Show as a low-confidence suggestion |
+| The user removed this thread from the current project | Keep it ignored until explicitly restored |
 
-Conflicting Git remotes prevent broad parent repositories from claiming
-unrelated conversations.
+If Git remotes conflict, a broad parent repository cannot claim the conversation merely because its path is nested there. ThreadRelink never auto-links from a directory name alone.
 
-### Safe recovery at the new path
+### 4. Remember paths and detect a project move
 
-ThreadRelink stores project records, path aliases, metadata snapshots, links,
-and project-scoped ignored matches in `~/.threadrelink/registry.json`. It never
-writes to `~/.codex`.
+ThreadRelink stores project records, old and current path aliases, cached conversation metadata, confirmed links, and project-scoped ignored matches in `~/.threadrelink/registry.json`. Registry updates use a local lock and atomic file replacement.
 
-For a conversation that originally ran in
-`/old/project/packages/api`, ThreadRelink stores `packages/api` relative to the
-project root and resolves it under the new root before resuming. The resolved
-path must exist, be a directory, and stay inside the project even after
-following symlinks. Otherwise, the extension warns and falls back to the
-project root.
+When the same UUID appears at a path that has never been recorded, ThreadRelink adds it as a new path alias. The first scan at that location produces a migration report showing the previous project path and the selected resume path for every linked conversation.
 
-The extension then opens an integrated terminal with:
+### 5. Preserve the original subdirectory safely
 
-```bash
-codex resume --cd <resolved-project-path> <thread-id>
+Each link can retain the conversation working directory relative to the project root. For example:
+
+```text
+Original cwd:     /work/toolspec/packages/api
+Stored relative:  packages/api
+New project root: /archive/finspec
+Resume cwd:       /archive/finspec/packages/api
 ```
 
-Removing a thread creates an ignored match for only that project. Moving it
-creates an explicit link to the target project and prevents the old project
-from claiming it again. Restoring it clears the ignored match.
+Before resuming, ThreadRelink resolves the real filesystem path and verifies that the target still exists, is a directory, and remains inside the current project. A missing directory, a target that has become a file, `..` traversal, or a symlink escape produces a warning and safely falls back to the project root.
 
-## Installation
+Finally, the extension runs `codex resume --cd <resolved-path> <thread-id>` in a VS Code integrated terminal. Codex remains fully responsible for the conversation itself.
 
-Install **ThreadRelink** from the VS Code Marketplace, or run:
+### 6. Keep manual corrections stable
+
+Removing a conversation from the current project saves an ignored match only for that project, so the next scan does not immediately add it back. Moving a conversation to another registered project creates an explicit link there and prevents the old project from reclaiming it. Restoring the conversation clears the applicable ignored match.
+
+## VS Code illustrated guide
+
+### 1. Install from the Marketplace
+
+Search for **ThreadRelink** in the VS Code Extensions view, or run:
 
 ```bash
 code --install-extension ascendho.threadrelink
 ```
 
-VS Code automatically installs Marketplace updates when extension auto-update
-is enabled. A manually installed VSIX does not receive automatic updates by
-default.
+Marketplace installations receive extension updates automatically as long as VS Code extension auto-update is enabled.
 
-## Quick start
+> `pnpm` is development tooling for contributors and offline package builders, not a ThreadRelink user CLI. Marketplace users do not need to run it.
 
-1. Open the original project and select **Set Up This Project**.
-2. Allow the metadata-only scan when prompted.
-3. Finish the active Codex session and close its terminal.
-4. Rename or move the folder, then open the new path in VS Code.
-5. Expand **Codex Conversations** and select the continue icon beside the
-   original conversation.
+For local development or offline packaging, first run `pnpm package:vscode`. Then press `⌘⇧P` (`Ctrl+Shift+P` on Windows/Linux), run **Extensions: Install from VSIX...**, and select `packages/vscode/threadrelink.vsix`.
 
-ThreadRelink opens:
+![Install a local ThreadRelink VSIX](https://raw.githubusercontent.com/ascendho/ThreadRelink/main/assets/guide/01-install-vsix.png)
+
+### 2. Open ThreadRelink
+
+Select the ThreadRelink icon in the Activity Bar. If it is hidden, right-click the Activity Bar and enable **ThreadRelink**, or run `ThreadRelink: Open Conversations View`.
+
+![Find ThreadRelink in the Activity Bar](https://raw.githubusercontent.com/ascendho/ThreadRelink/main/assets/guide/02-find-threadrelink.png)
+
+### 3. Set up the project once
+
+Open the original project and select **Set Up This Project**.
+
+- Metadata consent is requested once per VS Code profile.
+- Every new project still requires explicit setup.
+- If the folder is inside a larger Git repository, ThreadRelink always asks you to choose the project boundary.
+
+Git projects store the stable UUID in local `.git/config`; standalone directories use `.threadrelink/project.json`. Neither location contains Codex messages.
+
+![Enable metadata access and set up a project](https://raw.githubusercontent.com/ascendho/ThreadRelink/main/assets/guide/03-enable-and-initialize.png)
+
+### 4. Rename or move the folder
+
+Finish the active Codex session, close its terminal and workspace, then rename the folder from its parent directory:
 
 ```bash
-codex resume --cd <current-project-path> <thread-id>
+mv toolspec finspec
 ```
 
-When the original conversation started in a project subdirectory, ThreadRelink
-resumes from the corresponding subdirectory at the new location. Missing or
-unsafe subdirectories fall back to the project root with a warning.
+Open `finspec` in VS Code. If the list does not update immediately, select the ThreadRelink refresh button.
 
-![Set up ThreadRelink](https://raw.githubusercontent.com/ascendho/ThreadRelink/main/packages/vscode/media/guide/03-enable-and-initialize.png)
+### 5. Resume the original conversation
 
-![Resume after a folder rename](https://raw.githubusercontent.com/ascendho/ThreadRelink/main/packages/vscode/media/guide/04-resume-after-rename.png)
+Expand **Codex Conversations**, hover the target conversation, and select the continue icon. If the original conversation started in a project subdirectory, ThreadRelink preserves that relative location after the move. If the subdirectory no longer exists, it warns and safely falls back to the project root. It then runs the following command in an integrated terminal:
 
-## Recovery tools
+```bash
+codex resume --cd /new/path/finspec <thread-id>
+```
 
-- **Find Old Conversations** shows suggested or unrelated local metadata only
-  when requested.
-- **Review Ignored Conversations** restores a conversation previously removed
-  from this project.
-- Right-click a linked conversation to remove and ignore it, or move it to
-  another registered project.
-- A newly detected project location produces a one-time recovery report in the
-  ThreadRelink output.
-- **Relink Previous Project Path** associates an old absolute path when the
-  project was renamed before setup.
-- **Forget Project** removes only ThreadRelink identity and link records after
-  confirmation. Codex conversations are never deleted.
-- **Run Diagnostics** checks Node.js, Git, Codex app-server access, project
-  identity, and the local registry.
+![Resume a conversation after the rename](https://raw.githubusercontent.com/ascendho/ThreadRelink/main/assets/guide/04-resume-after-rename.png)
 
-An unconfigured project never displays all global conversations. A nested
-folder also never inherits a parent Git project without an explicit choice.
+![The original thread running at the new path](https://raw.githubusercontent.com/ascendho/ThreadRelink/main/assets/guide/05-resumed-terminal.png)
+
+## What appears in the sidebar
+
+- An unconfigured folder shows only setup actions, not global conversations.
+- The main **Conversations** section contains only conversations linked to the current project.
+- Suggested and unrelated conversations appear only after you explicitly run **Find Old Conversations**.
+- Right-click a linked conversation to remove and ignore it for the current project, or move it to another registered project.
+- An ignored conversation can be linked again through **Find Old Conversations**.
+- The first time a new project path is detected, a migration report shows each conversation's original and resolved directories.
+- If the folder was renamed before ThreadRelink was installed, use **Relink Previous Project Path** to enter the old path manually.
+- **Forget Project** removes only ThreadRelink identity and link records after confirmation; it never deletes Codex transcripts.
+
+ThreadRelink never automatically treats a nested folder as its parent Git repository.
 
 ## Local data and privacy
 
 | ThreadRelink | Details |
 | --- | --- |
-| Reads | Codex listing metadata, project identity, local paths, and Git remote/commit information |
+| Reads | Codex listing metadata, project identity, local paths, and Git remote and commit information |
 | Writes | The project UUID and `~/.threadrelink/registry.json` |
-| Never does | Upload data, provide telemetry, modify `~/.codex`, alter Codex databases/transcripts, or copy full message bodies |
+| Never does | Upload data, provide telemetry, write to `~/.codex`, modify Codex databases or transcripts, or copy full message bodies |
 
-No metadata scan occurs until the project is explicitly set up and consent is
-granted. Registry version 1 migrates automatically to version 2 on the next
-update. Downgrading to ThreadRelink 0.4 afterward is not recommended.
+ThreadRelink does not scan conversation metadata until the project is explicitly set up and consent is granted. Registry version 1 migrates automatically to version 2 on the next update. After version 2 has been written, ThreadRelink 0.4 may no longer be able to read the registry, so downgrading is not recommended.
 
 ## Security
 
-Do not attach `registry.json`, Codex transcripts, or unredacted absolute paths
-to public issues. Report suspected vulnerabilities through
-[GitHub private vulnerability reporting](https://github.com/ascendho/ThreadRelink/security/advisories/new).
+ThreadRelink runs only on your machine and has no telemetry or network service. It reads Codex conversation metadata through the local Codex app-server and stores a small project and conversation index under `~/.threadrelink`. Do not attach `registry.json`, Codex transcripts, or unredacted absolute paths to public issues. If you believe you found a security vulnerability, use [GitHub private vulnerability reporting](https://github.com/ascendho/ThreadRelink/security/advisories/new) instead of opening a public issue.
 
 ## Feedback and contributing
 
-[Issues](https://github.com/ascendho/ThreadRelink/issues) and
-[pull requests](https://github.com/ascendho/ThreadRelink/pulls) are welcome.
-Bug reports should include reproducible steps without private paths or
-conversation data. Pull requests should stay focused, explain the user impact,
-update relevant tests or documentation, and pass `pnpm check`.
+[Issues](https://github.com/ascendho/ThreadRelink/issues) and [pull requests](https://github.com/ascendho/ThreadRelink/pulls) are welcome:
 
-ThreadRelink is an independent project and is not an official OpenAI Codex
-extension.
+- Use Issues for reproducible bugs, feature ideas, and usability feedback; search existing issues before opening a new one.
+- Redact absolute paths from screenshots and diagnostic information, and never attach a ThreadRelink registry or Codex transcript.
+- Keep pull requests focused, explain the user impact, update relevant tests or documentation, and run `pnpm check` before submitting.
