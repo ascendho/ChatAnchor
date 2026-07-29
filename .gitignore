@@ -14,3 +14,6 @@ coverage/
 !.env.example
 .threadrelink/
 .reporecall/
+
+# Local maintainer reference
+/docs/MARKETPLACE_PUBLISHING.md

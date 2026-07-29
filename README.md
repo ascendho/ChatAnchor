@@ -1,6 +1,6 @@
 # ThreadRelink
 
-[简体中文](README.zh-CN.md)
+> A [Simplified Chinese version](README.zh-CN.md) is also available.
 
 <p align="center">
   <img src="packages/vscode/resources/threadrelink.png" width="144" alt="ThreadRelink logo">
@@ -9,6 +9,7 @@
 <p align="center">
   <a href="https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml"><img src="https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/badge/VS_Code-Marketplace-007ACC?logo=visualstudiocode&logoColor=white" alt="Get ThreadRelink from the VS Code Marketplace"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/visual-studio-marketplace/d/ascendho.threadrelink?label=Downloads&color=007ACC" alt="Visual Studio Marketplace downloads"></a>
   <a href="https://github.com/ascendho/ThreadRelink/releases/latest"><img src="https://img.shields.io/github/v/release/ascendho/ThreadRelink?label=Release" alt="Latest GitHub release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/ascendho/ThreadRelink" alt="MIT License"></a>
 </p>
@@ -238,6 +239,29 @@ and consent is granted. Registry version 1 is read and migrated automatically
 to version 2 on the next update. After that write, ThreadRelink 0.4 may no
 longer be able to read the registry, so downgrading is not recommended.
 
+## Security
+
+ThreadRelink is local-only and has no telemetry or network service. It reads
+Codex conversation metadata through the local Codex app-server and stores a
+small project/thread index under `~/.threadrelink`.
+
+Do not attach `registry.json`, Codex transcripts, or unredacted absolute paths
+to public issues. If you believe you found a security vulnerability, use
+[GitHub private vulnerability reporting](https://github.com/ascendho/ThreadRelink/security/advisories/new)
+instead of opening a public issue.
+
+## Feedback and contributing
+
+[Issues](https://github.com/ascendho/ThreadRelink/issues) and
+[pull requests](https://github.com/ascendho/ThreadRelink/pulls) are welcome:
+
+- Use Issues for reproducible bugs, feature ideas, and usability feedback.
+  Search existing issues before opening a new one.
+- Redact absolute paths and never attach a ThreadRelink registry or Codex
+  transcript to an issue.
+- Keep pull requests focused, explain the user impact, update relevant tests or
+  documentation, and run `pnpm check` before submitting.
+
 ## Development (contributors only)
 
 This pnpm workspace contains:
@@ -253,9 +277,7 @@ pnpm package:vscode
 
 CI runs checks and VSIX packaging on macOS, Linux, and Windows.
 Publishing is triggered by a matching `vX.Y.Z` GitHub Release after all checks
-pass. See the
-[Marketplace publishing guide (Chinese)](docs/MARKETPLACE_PUBLISHING.md) for
-the one-time identity setup and release procedure.
+pass.
 
 ## License
 

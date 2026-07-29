@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Consolidate security, feedback, contribution, and language-switching guidance
+  in the README, and add a Marketplace download badge.
+
 ## 0.5.0
 
 - Resume linked conversations from their preserved project-relative

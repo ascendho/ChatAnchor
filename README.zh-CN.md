@@ -1,6 +1,6 @@
 # ThreadRelink
 
-[English](README.md)
+> [English version](README.md) is also available.
 
 <p align="center">
   <img src="packages/vscode/resources/threadrelink.png" width="144" alt="ThreadRelink logo">
@@ -9,6 +9,7 @@
 <p align="center">
   <a href="https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml"><img src="https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/badge/VS_Code-Marketplace-007ACC?logo=visualstudiocode&logoColor=white" alt="从 VS Code Marketplace 获取 ThreadRelink"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/visual-studio-marketplace/d/ascendho.threadrelink?label=Downloads&color=007ACC" alt="Visual Studio Marketplace 下载量"></a>
   <a href="https://github.com/ascendho/ThreadRelink/releases/latest"><img src="https://img.shields.io/github/v/release/ascendho/ThreadRelink?label=Release" alt="最新 GitHub Release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/ascendho/ThreadRelink" alt="MIT License"></a>
 </p>
@@ -207,6 +208,27 @@ ThreadRelink 不会自动把嵌套文件夹当成父级 Git 仓库。
 会在下次更新时自动迁移到 version 2。写入 version 2 后，ThreadRelink 0.4 可能
 无法继续读取，因此不建议降级。
 
+## 安全
+
+ThreadRelink 只在本机运行，没有遥测或网络服务。它通过本地 Codex app-server
+读取 Codex 对话元数据，并在 `~/.threadrelink` 中保存少量项目和对话索引。
+
+请勿在公开 Issue 中附加 `registry.json`、Codex transcript 或未脱敏的绝对路径。
+如果你认为发现了安全漏洞，请使用
+[GitHub 私密漏洞报告](https://github.com/ascendho/ThreadRelink/security/advisories/new)，
+不要创建公开 Issue。
+
+## 反馈与贡献
+
+欢迎提交 [Issue](https://github.com/ascendho/ThreadRelink/issues) 和
+[Pull Request](https://github.com/ascendho/ThreadRelink/pulls)：
+
+- Issue 可用于反馈可复现的 Bug、功能建议和使用体验；提交前请先搜索已有 Issue；
+- 截图和诊断信息必须移除绝对路径，绝不要上传 ThreadRelink registry 或 Codex
+  transcript；
+- Pull Request 应保持聚焦，说明对用户的影响，更新相关测试或文档，并在提交前
+  运行 `pnpm check`。
+
 ## 开发（仅贡献者）
 
 这是一个 pnpm workspace：
@@ -221,8 +243,7 @@ pnpm package:vscode
 ```
 
 CI 会在 macOS、Linux 和 Windows 上运行检查并打包 VSIX。
-只有版本匹配的 `vX.Y.Z` GitHub Release 才会触发 Marketplace 发布。一次性身份
-配置和后续发布步骤见 [Marketplace 发布指南](docs/MARKETPLACE_PUBLISHING.md)。
+只有版本匹配的 `vX.Y.Z` GitHub Release 才会触发 Marketplace 发布。
 
 ## License
 

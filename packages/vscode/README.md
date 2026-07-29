@@ -1,6 +1,6 @@
 # ThreadRelink for VS Code
 
-[简体中文完整指南](https://github.com/ascendho/ThreadRelink/blob/main/README.zh-CN.md)
+> A [Simplified Chinese version](https://github.com/ascendho/ThreadRelink/blob/main/README.zh-CN.md) is also available.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/ascendho/ThreadRelink/main/packages/vscode/resources/threadrelink.png" width="144" alt="ThreadRelink logo">
@@ -9,6 +9,7 @@
 <p align="center">
   <a href="https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml"><img src="https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/badge/VS_Code-Marketplace-007ACC?logo=visualstudiocode&logoColor=white" alt="Get ThreadRelink from the VS Code Marketplace"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink"><img src="https://img.shields.io/visual-studio-marketplace/d/ascendho.threadrelink?label=Downloads&color=007ACC" alt="Visual Studio Marketplace downloads"></a>
   <a href="https://github.com/ascendho/ThreadRelink/releases/latest"><img src="https://img.shields.io/github/v/release/ascendho/ThreadRelink?label=Release" alt="Latest GitHub release"></a>
   <a href="https://github.com/ascendho/ThreadRelink/blob/main/LICENSE"><img src="https://img.shields.io/github/license/ascendho/ThreadRelink" alt="MIT License"></a>
 </p>
@@ -164,6 +165,20 @@ folder also never inherits a parent Git project without an explicit choice.
 No metadata scan occurs until the project is explicitly set up and consent is
 granted. Registry version 1 migrates automatically to version 2 on the next
 update. Downgrading to ThreadRelink 0.4 afterward is not recommended.
+
+## Security
+
+Do not attach `registry.json`, Codex transcripts, or unredacted absolute paths
+to public issues. Report suspected vulnerabilities through
+[GitHub private vulnerability reporting](https://github.com/ascendho/ThreadRelink/security/advisories/new).
+
+## Feedback and contributing
+
+[Issues](https://github.com/ascendho/ThreadRelink/issues) and
+[pull requests](https://github.com/ascendho/ThreadRelink/pulls) are welcome.
+Bug reports should include reproducible steps without private paths or
+conversation data. Pull requests should stay focused, explain the user impact,
+update relevant tests or documentation, and pass `pnpm check`.
 
 ThreadRelink is an independent project and is not an official OpenAI Codex
 extension.
