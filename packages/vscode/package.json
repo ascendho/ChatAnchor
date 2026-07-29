@@ -1,7 +1,7 @@
 {
   "name": "threadrelink",
   "displayName": "ThreadRelink",
-  "description": "A VS Code extension that keeps local Codex conversations discoverable after a repository is renamed or moved.",
+  "description": "A VS Code extension that keeps local Codex conversations connected to their projects after repositories are renamed or moved.",
   "version": "0.4.1",
   "icon": "resources/threadrelink.png",
   "publisher": "ascendho",

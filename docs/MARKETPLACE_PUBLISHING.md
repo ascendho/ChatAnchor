@@ -69,6 +69,27 @@ Token。
 9. 再次运行身份检查，将 `verify_access` 设置为 `true`。检查成功前不要创建
    Release。
 
+## Azure Free Trial 到期后的备用方案
+
+Marketplace 发布本身不会消耗 Azure Free Trial 额度，但当前的 user-assigned
+managed identity 是 Azure subscription 中的资源。Free Trial 到期后，先手动运行
+**Check Marketplace Publishing Identity**，并将 `verify_access` 设置为 `true`：
+
+- 如果检查成功，继续使用当前 identity，不做迁移。
+- 如果检查因为 subscription 已禁用而失败，再迁移到不依赖 subscription 的
+  Microsoft Entra app registration。
+
+迁移时使用现有 GitHub OIDC issuer、不可变 subject 和 audience 创建 app
+federated credential，将 GitHub Environment 中的 `AZURE_CLIENT_ID` 改为新
+application client ID，并在两个工作流的 `azure/login` 步骤中删除
+`subscription-id`、添加 `allow-no-subscriptions: true`。先以
+`verify_access: false` 取得新 identity 的 Marketplace profile ID，将其添加为
+publisher Contributor，再以 `verify_access: true` 验证访问。
+
+只有新 identity 成功发布一个版本后，才移除旧 Marketplace Contributor，并删除
+旧 managed identity 和空 resource group。不要仅因为 Free Trial 即将到期就升级为
+按量付费订阅。
+
 ## 发布新版本
 
 1. 将 `packages/vscode/package.json` 更新为新的 `X.Y.Z` 版本。

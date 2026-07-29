@@ -6,8 +6,8 @@
     </linearGradient>
   </defs>
   <rect x="36" y="36" width="440" height="440" rx="120" fill="url(#threadrelink-gradient)"/>
-  <path d="M238 117h158c29 0 52 23 52 52v152c0 29-23 52-52 52h-75l-83 61v-61c-29 0-52-23-52-52V169c0-29 23-52 52-52Z" fill="none" stroke="#fff" stroke-width="30" stroke-linejoin="round"/>
-  <path d="M252 205h130M252 263h82" fill="none" stroke="#fff" stroke-width="26" stroke-linecap="round"/>
-  <path d="M145 341v-70c0-44-35-79-79-79H59" fill="none" stroke="#6EF0D2" stroke-width="32" stroke-linecap="round"/>
-  <path d="m99 150-42 42 42 42" fill="none" stroke="#6EF0D2" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M261 130h129c30 0 54 24 54 54v132c0 30-24 54-54 54h-67l-72 54v-54c-30 0-54-24-54-54V184c0-30 24-54 54-54Z" fill="none" stroke="#fff" stroke-width="28" stroke-linejoin="round"/>
+  <path d="M270 210h122M270 258h77" fill="none" stroke="#fff" stroke-width="24" stroke-linecap="round"/>
+  <path d="M154 355v-82c0-51-41-92-92-92h-8" fill="none" stroke="#6EF0D2" stroke-width="34" stroke-linecap="round"/>
+  <path d="m107 130-53 51 53 53" fill="none" stroke="#6EF0D2" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Rebalance the ThreadRelink logo so the return arrow has more room and visual
+  weight.
+- Describe the extension as keeping Codex conversations connected to their
+  projects after repository renames or moves.
+
 ## 0.4.1
 
 - Repair stale automatic conversation links when the current project has
