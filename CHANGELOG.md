@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Rebalance the ThreadRelink logo so the return arrow has more room and visual
+  weight.
+- Clarify the VS Code extension description and document the Azure free-trial
+  publishing contingency.
+
 ## 0.4.1
 
 - Repair stale automatic conversation links when the current project has

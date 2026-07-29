@@ -46,7 +46,7 @@ describe("VS Code extension manifest", () => {
     expect(manifest.publisher).toBe("ascendho");
     expect(manifest.displayName).toBe("ThreadRelink");
     expect(manifest.description).toBe(
-      "A VS Code extension that keeps local Codex conversations discoverable after a repository is renamed or moved.",
+      "A VS Code extension that keeps local Codex conversations connected to their projects after repositories are renamed or moved.",
     );
     expect(manifest.version).toMatch(/^\d+\.\d+\.\d+$/);
     expect(manifest.pricing).toBe("Free");
