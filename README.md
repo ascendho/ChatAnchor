@@ -13,8 +13,8 @@
   <a href="LICENSE"><img src="https://img.shields.io/github/license/ascendho/ThreadRelink" alt="MIT License"></a>
 </p>
 
-ThreadRelink is a local VS Code extension and CLI that keeps Codex
-conversations connected to a project after its folder is renamed or moved.
+ThreadRelink is a local VS Code extension that keeps Codex conversations
+connected to a project after its folder is renamed or moved.
 
 Codex records the working directory used when a conversation starts. After
 renaming `toolspec` to `finspec`, the old conversation may disappear from a
@@ -24,6 +24,9 @@ resumes the original thread in the new working directory.
 
 > ThreadRelink is an independent project. It is not an official OpenAI Codex
 > extension and does not replace Codex CLI.
+
+All ThreadRelink actions are available from its sidebar, context menus, and the
+VS Code Command Palette.
 
 ## VS Code quick start
 
@@ -113,35 +116,6 @@ codex resume --cd /new/path/finspec <thread-id>
 ThreadRelink never automatically treats a nested folder as its parent Git
 repository.
 
-## CLI
-
-Requirements:
-
-- Node.js 22 or newer
-- Git for repository identities
-- Codex CLI 0.145.0 or newer
-
-```bash
-npx @ascendho/threadrelink init
-threadrelink init
-threadrelink init ./nested-folder --as-directory
-threadrelink init ./nested-folder --use-parent-repo
-threadrelink sync
-threadrelink list
-threadrelink list --ignored
-threadrelink link <thread-id> /path/to/project
-threadrelink unlink <thread-id> /path/to/project
-threadrelink relink --from /old/path/toolspec --to /new/path/finspec
-threadrelink resume <thread-id>
-threadrelink resume <thread-id> --cwd /exact/override
-threadrelink forget /mistaken/project
-threadrelink doctor
-```
-
-Reporting commands support `--json` where useful. Override the Codex binary
-with `--codex-path` or `THREADRELINK_CODEX_PATH`; override local state with
-`--registry-home` or `THREADRELINK_HOME`.
-
 ## How matching works
 
 ThreadRelink uses conservative evidence:
@@ -155,9 +129,9 @@ ThreadRelink uses conservative evidence:
 confirmation. It never deletes cached conversation metadata or Codex
 transcripts.
 
-`unlink` stores a project-scoped ignored match so the conversation is not
-automatically relinked on the next sync. Linking it again removes that ignored
-match.
+Removing a conversation from a project stores a project-scoped ignored match
+so it is not automatically relinked on the next sync. Linking it again removes
+that ignored match.
 
 ## Privacy
 
@@ -174,7 +148,6 @@ match.
 This pnpm workspace contains:
 
 - `packages/core` — stable identity, registry, matching, and Codex JSON-RPC.
-- `packages/cli` — scriptable project and conversation commands.
 - `packages/vscode` — Tree View, walkthrough, and integrated-terminal resume.
 
 ```bash

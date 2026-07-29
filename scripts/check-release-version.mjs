@@ -10,7 +10,6 @@ const expectedVersion = tag.slice(1);
 const manifests = [
   ["root", "../package.json"],
   ["core", "../packages/core/package.json"],
-  ["CLI", "../packages/cli/package.json"],
   ["VS Code", "../packages/vscode/package.json"],
 ];
 
@@ -26,11 +25,6 @@ for (const [name, path] of manifests) {
 }
 
 const sourceVersions = [
-  [
-    "CLI --version",
-    "../packages/cli/src/index.ts",
-    `.version("${expectedVersion}")`,
-  ],
   [
     "Codex app-server client",
     "../packages/core/src/codex.ts",

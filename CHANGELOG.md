@@ -12,6 +12,8 @@
   modifying Codex transcripts.
 - Upgrade the local registry to schema version 2 with lossless version 1
   migration and project-scoped ignored matches.
+- Retire the unpublished standalone ThreadRelink CLI and focus the supported
+  workflow on the VS Code interface.
 - Rebalance the ThreadRelink logo so the return arrow has more room and visual
   weight.
 - Clarify the VS Code extension description and document the Azure free-trial

@@ -13,8 +13,8 @@
   <a href="LICENSE"><img src="https://img.shields.io/github/license/ascendho/ThreadRelink" alt="MIT License"></a>
 </p>
 
-ThreadRelink 是一个本地 VS Code 扩展和 CLI。项目文件夹改名或移动后，它仍然
-可以把原来的 Codex 对话连接到这个项目。
+ThreadRelink 是一个本地 VS Code 扩展。项目文件夹改名或移动后，它仍然可以把
+原来的 Codex 对话连接到这个项目。
 
 Codex 会记录对话开始时的工作目录。例如把 `toolspec` 改成 `finspec` 后，按路径
 筛选的恢复列表可能不再显示旧对话，但聊天文件实际上仍在本机。ThreadRelink
@@ -22,6 +22,8 @@ Codex 会记录对话开始时的工作目录。例如把 `toolspec` 改成 `fin
 
 > ThreadRelink 是独立项目，不是 OpenAI 官方 Codex 扩展，也不会替代 Codex
 > CLI。
+
+ThreadRelink 的全部操作都可以通过侧边栏、右键菜单和 VS Code 命令面板完成。
 
 ## VS Code 图文使用方法
 
@@ -99,34 +101,6 @@ codex resume --cd /new/path/finspec <thread-id>
 
 ThreadRelink 不会自动把嵌套文件夹当成父级 Git 仓库。
 
-## CLI
-
-要求：
-
-- Node.js 22 或更高版本
-- Git（用于仓库身份）
-- Codex CLI 0.145.0 或更高版本
-
-```bash
-npx @ascendho/threadrelink init
-threadrelink init
-threadrelink init ./nested-folder --as-directory
-threadrelink init ./nested-folder --use-parent-repo
-threadrelink sync
-threadrelink list
-threadrelink list --ignored
-threadrelink link <thread-id> /path/to/project
-threadrelink unlink <thread-id> /path/to/project
-threadrelink relink --from /old/path/toolspec --to /new/path/finspec
-threadrelink resume <thread-id>
-threadrelink resume <thread-id> --cwd /exact/override
-threadrelink forget /mistaken/project
-threadrelink doctor
-```
-
-可用 `--codex-path` 或 `THREADRELINK_CODEX_PATH` 指定 Codex；可用
-`--registry-home` 或 `THREADRELINK_HOME` 指定本地状态目录。
-
 ## 匹配规则
 
 ThreadRelink 的自动匹配比较保守：
@@ -139,8 +113,8 @@ ThreadRelink 的自动匹配比较保守：
 `Forget Project` 只会在确认后删除 ThreadRelink 身份和链接，不会删除缓存的
 conversation 元数据或 Codex 聊天文件。
 
-`unlink` 会保存当前项目范围内的忽略记录，避免下次同步再次自动链接；以后明确
-执行 `link` 会移除对应的忽略记录。
+从项目中移除对话会保存当前项目范围内的忽略记录，避免下次同步再次自动链接；
+以后重新链接该对话会移除对应的忽略记录。
 
 ## 隐私
 
@@ -155,7 +129,6 @@ conversation 元数据或 Codex 聊天文件。
 这是一个 pnpm workspace：
 
 - `packages/core`：稳定身份、registry、匹配和 Codex JSON-RPC；
-- `packages/cli`：项目及对话命令；
 - `packages/vscode`：Tree View、内置教程和集成终端恢复。
 
 ```bash

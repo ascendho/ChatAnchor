@@ -9,8 +9,6 @@
 - Show a one-time recovery report when ThreadRelink discovers a new project
   location.
 - Add per-conversation actions to remove, ignore, restore, or move a link.
-- Add CLI parity for linking, unlinking, ignored conversations, and smart
-  resume targets.
 - Rebalance the ThreadRelink logo so the return arrow has more room and visual
   weight.
 - Describe the extension as keeping Codex conversations connected to their
