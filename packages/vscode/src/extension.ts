@@ -766,6 +766,37 @@ export async function activate(
         }
       },
     ),
+    vscode.commands.registerCommand(
+      "threadrelink.revealLocation",
+      async (node?: ThreadRelinkTreeNode) => {
+        const selected = node?.kind === "thread"
+          ? node
+          : await chooseThread(
+              provider.allLinked(),
+              "Choose a project conversation to reveal",
+            );
+        if (!selected || selected.kind !== "thread") {
+          return;
+        }
+        try {
+          const target = await makeService().resolveResumeTarget(
+            selected.decision.thread.id,
+            selected.workspace.path,
+          );
+          if (target.warning) {
+            void vscode.window.showWarningMessage(target.warning);
+          }
+          await vscode.commands.executeCommand(
+            "revealFileInOS",
+            vscode.Uri.file(target.path),
+          );
+        } catch (error) {
+          void vscode.window.showErrorMessage(
+            `ThreadRelink: ${errorMessage(error)}`,
+          );
+        }
+      },
+    ),
     vscode.commands.registerCommand("threadrelink.relink", async () => {
       if (!(await ensureConsent())) {
         return;
@@ -846,6 +877,7 @@ export async function activate(
     "forgetProject",
     "confirmLink",
     "resume",
+    "revealLocation",
     "relink",
     "doctor",
   ];

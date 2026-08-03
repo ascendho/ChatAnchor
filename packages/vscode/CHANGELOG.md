@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.5.1
+
+- Reveal a linked conversation's working directory in the system file manager
+  from the Conversations sidebar (Finder, Explorer, or Linux file manager via
+  VS Code's cross-platform `revealFileInOS`).
 - Consolidate security, feedback, contribution, and language-switching guidance
   in the README, and add a Marketplace download badge.
 

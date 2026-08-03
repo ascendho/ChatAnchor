@@ -24,6 +24,13 @@ interface ExtensionManifest {
   };
   contributes: {
     commands: Array<{ command: string }>;
+    menus: {
+      "view/item/context": Array<{
+        command: string;
+        when: string;
+        group: string;
+      }>;
+    };
     viewsContainers: {
       activitybar: Array<{ icon: string }>;
     };
@@ -85,6 +92,25 @@ describe("VS Code extension manifest", () => {
     expect(commandIds).toContain("threadrelink.forgetProject");
     expect(commandIds).toContain("threadrelink.unlink");
     expect(commandIds).toContain("threadrelink.move");
+    expect(commandIds).toContain("threadrelink.revealLocation");
+
+    const revealMenus = manifest.contributes.menus["view/item/context"].filter(
+      (entry) => entry.command === "threadrelink.revealLocation",
+    );
+    expect(revealMenus).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          when:
+            "view == threadrelink.conversations && viewItem == threadrelink.linkedThread",
+          group: "inline@2",
+        }),
+        expect.objectContaining({
+          when:
+            "view == threadrelink.conversations && viewItem == threadrelink.linkedThread",
+          group: "manage@1",
+        }),
+      ]),
+    );
 
     for (const step of walkthrough?.steps ?? []) {
       expect(step.media.image).toMatch(/^media\/guide\/.+\.png$/);

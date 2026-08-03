@@ -2,7 +2,7 @@
   "name": "threadrelink",
   "displayName": "ThreadRelink",
   "description": "A VS Code extension that keeps local Codex conversations connected to their projects after repositories are renamed or moved.",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "icon": "resources/threadrelink.png",
   "publisher": "ascendho",
   "repository": {
@@ -100,6 +100,11 @@
         "command": "threadrelink.resume",
         "title": "ThreadRelink: Resume Conversation Here",
         "icon": "$(debug-continue)"
+      },
+      {
+        "command": "threadrelink.revealLocation",
+        "title": "ThreadRelink: Reveal Conversation Location",
+        "icon": "$(folder-opened)"
       },
       {
         "command": "threadrelink.relink",
@@ -245,14 +250,24 @@
           "group": "inline@1"
         },
         {
-          "command": "threadrelink.move",
+          "command": "threadrelink.revealLocation",
+          "when": "view == threadrelink.conversations && viewItem == threadrelink.linkedThread",
+          "group": "inline@2"
+        },
+        {
+          "command": "threadrelink.revealLocation",
           "when": "view == threadrelink.conversations && viewItem == threadrelink.linkedThread",
           "group": "manage@1"
         },
         {
-          "command": "threadrelink.unlink",
+          "command": "threadrelink.move",
           "when": "view == threadrelink.conversations && viewItem == threadrelink.linkedThread",
           "group": "manage@2"
+        },
+        {
+          "command": "threadrelink.unlink",
+          "when": "view == threadrelink.conversations && viewItem == threadrelink.linkedThread",
+          "group": "manage@3"
         }
       ]
     },
