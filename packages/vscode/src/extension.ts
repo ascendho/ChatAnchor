@@ -779,16 +779,11 @@ export async function activate(
           return;
         }
         try {
-          const target = await makeService().resolveResumeTarget(
-            selected.decision.thread.id,
-            selected.workspace.path,
-          );
-          if (target.warning) {
-            void vscode.window.showWarningMessage(target.warning);
-          }
+          const rolloutPath = await makeService()
+            .resolveConversationRolloutPath(selected.decision.thread.id);
           await vscode.commands.executeCommand(
             "revealFileInOS",
-            vscode.Uri.file(target.path),
+            vscode.Uri.file(rolloutPath),
           );
         } catch (error) {
           void vscode.window.showErrorMessage(

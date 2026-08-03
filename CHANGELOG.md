@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.5.2
+
+- Fix Reveal Conversation File so it opens the local Codex rollout/transcript
+  path under `~/.codex/sessions` instead of the project working directory.
+- Resolve the file from the Codex state database `rollout_path` metadata (with
+  a sessions filename fallback); still never opens or parses message bodies.
+
 ## 0.5.1
 
 - Reveal a linked conversation's working directory in the system file manager

@@ -7,7 +7,7 @@ await build({
   platform: "node",
   format: "cjs",
   target: "node22",
-  external: ["vscode"],
+  external: ["vscode", "node:sqlite"],
   sourcemap: true,
   minify: false,
   logLevel: "info",

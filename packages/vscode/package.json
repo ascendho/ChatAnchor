@@ -2,7 +2,7 @@
   "name": "threadrelink",
   "displayName": "ThreadRelink",
   "description": "A VS Code extension that keeps local Codex conversations connected to their projects after repositories are renamed or moved.",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "icon": "resources/threadrelink.png",
   "publisher": "ascendho",
   "repository": {
@@ -103,7 +103,7 @@
       },
       {
         "command": "threadrelink.revealLocation",
-        "title": "ThreadRelink: Reveal Conversation Location",
+        "title": "ThreadRelink: Reveal Conversation File",
         "icon": "$(folder-opened)"
       },
       {

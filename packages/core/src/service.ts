@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { stat } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import { CodexAppServerClient, runCodexResume } from "./codex.js";
+import { resolveConversationRolloutPath } from "./conversation-path.js";
 import { ThreadRelinkError } from "./errors.js";
 import {
   ensureGitProjectId,
@@ -52,6 +53,7 @@ export interface ThreadRelinkServiceOptions {
   registryHome?: string;
   legacyRegistryHome?: string;
   codexPath?: string;
+  codexHome?: string;
   historyAdapterFactory?: HistoryAdapterFactory;
   now?: () => Date;
 }
@@ -173,6 +175,7 @@ function conversationTitle(thread: ThreadMetadata): string {
 export class ThreadRelinkService {
   public readonly registry: RegistryStore;
   public readonly codexPath?: string;
+  public readonly codexHome?: string;
   private readonly historyAdapterFactory: HistoryAdapterFactory;
   private readonly now: () => Date;
 
@@ -182,10 +185,17 @@ export class ThreadRelinkService {
       options.legacyRegistryHome,
     );
     this.codexPath = options.codexPath;
+    this.codexHome = options.codexHome;
     this.historyAdapterFactory =
       options.historyAdapterFactory
       ?? (() => CodexAppServerClient.start({ codexPath: this.codexPath }));
     this.now = options.now ?? (() => new Date());
+  }
+
+  public async resolveConversationRolloutPath(threadId: string): Promise<string> {
+    return resolveConversationRolloutPath(threadId, {
+      codexHome: this.codexHome,
+    });
   }
 
   public async probeProject(inputPath = process.cwd()): Promise<ProjectProbe> {
