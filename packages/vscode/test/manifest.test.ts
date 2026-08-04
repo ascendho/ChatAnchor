@@ -100,6 +100,7 @@ describe("VS Code extension manifest", () => {
     expect(commandIds).toContain("threadrelink.forgetProject");
     expect(commandIds).toContain("threadrelink.unlink");
     expect(commandIds).toContain("threadrelink.move");
+    expect(commandIds).toContain("threadrelink.copyAtPath");
     expect(commandIds).toContain("threadrelink.revealLocation");
     expect(commandIds).toContain("threadrelink.collapseTree");
     expect(commandIds).toContain("threadrelink.expandTree");
@@ -126,6 +127,24 @@ describe("VS Code extension manifest", () => {
       ]),
     );
 
+    const copyAtMenus = manifest.contributes.menus["view/item/context"].filter(
+      (entry) => entry.command === "threadrelink.copyAtPath",
+    );
+    expect(copyAtMenus).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          when:
+            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\./",
+          group: "inline@2",
+        }),
+        expect.objectContaining({
+          when:
+            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\./",
+          group: "manage@0",
+        }),
+      ]),
+    );
+
     const revealMenus = manifest.contributes.menus["view/item/context"].filter(
       (entry) => entry.command === "threadrelink.revealLocation",
     );
@@ -134,7 +153,7 @@ describe("VS Code extension manifest", () => {
         expect.objectContaining({
           when:
             "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\./",
-          group: "inline@2",
+          group: "inline@3",
         }),
         expect.objectContaining({
           when:

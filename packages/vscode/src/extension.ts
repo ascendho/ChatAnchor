@@ -841,6 +841,44 @@ export async function activate(
       },
     ),
     vscode.commands.registerCommand(
+      "threadrelink.copyAtPath",
+      async (node?: ThreadRelinkTreeNode) => {
+        const selected = node?.kind === "thread"
+          ? node
+          : await chooseThread(
+              provider.allLinked(),
+              "Choose a project conversation to copy",
+            );
+        if (!selected || selected.kind !== "thread") {
+          return;
+        }
+        try {
+          const conversationPath = await makeService()
+            .resolveConversationFilePath(
+              selected.decision.thread.provider,
+              selected.decision.thread.id,
+              selected.decision.thread.cwd,
+            );
+          const atPath = `@${conversationPath}`;
+          await vscode.env.clipboard.writeText(atPath);
+          const action = await vscode.window.showInformationMessage(
+            `Copied ${atPath}. Paste it into Cursor Chat or Agent to attach that conversation file.`,
+            "Reveal in OS",
+          );
+          if (action === "Reveal in OS") {
+            await vscode.commands.executeCommand(
+              "revealFileInOS",
+              vscode.Uri.file(conversationPath),
+            );
+          }
+        } catch (error) {
+          void vscode.window.showErrorMessage(
+            `ThreadRelink: ${errorMessage(error)}`,
+          );
+        }
+      },
+    ),
+    vscode.commands.registerCommand(
       "threadrelink.revealLocation",
       async (node?: ThreadRelinkTreeNode) => {
         const selected = node?.kind === "thread"
@@ -953,6 +991,7 @@ export async function activate(
     "forgetProject",
     "confirmLink",
     "resume",
+    "copyAtPath",
     "revealLocation",
     "relink",
     "doctor",

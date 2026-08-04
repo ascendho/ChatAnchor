@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add Copy @ Conversation Path between Resume and Reveal: copies
+  `@<absolute-path>` to the clipboard for pasting into Cursor Chat/Agent.
+  ThreadRelink still only resolves the path and does not read message bodies.
+
 ## 0.5.3
 
 - Add Cursor Agent CLI conversation discovery from `~/.cursor/chats` (list,

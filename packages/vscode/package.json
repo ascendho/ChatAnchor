@@ -112,6 +112,11 @@
         "icon": "$(debug-continue)"
       },
       {
+        "command": "threadrelink.copyAtPath",
+        "title": "ThreadRelink: Copy @ Conversation Path",
+        "icon": "$(mention)"
+      },
+      {
         "command": "threadrelink.revealLocation",
         "title": "ThreadRelink: Reveal Conversation File",
         "icon": "$(folder-opened)"
@@ -270,9 +275,19 @@
           "group": "inline@1"
         },
         {
-          "command": "threadrelink.revealLocation",
+          "command": "threadrelink.copyAtPath",
           "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\./",
           "group": "inline@2"
+        },
+        {
+          "command": "threadrelink.revealLocation",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\./",
+          "group": "inline@3"
+        },
+        {
+          "command": "threadrelink.copyAtPath",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\./",
+          "group": "manage@0"
         },
         {
           "command": "threadrelink.revealLocation",

@@ -22,9 +22,9 @@ ThreadRelink 是一个本地 VS Code 扩展，全部操作都可以通过侧边�
 
 | ThreadRelink | 具体内容 |
 | --- | --- |
-| 读取 | Codex 与 Cursor Agent CLI 列表元数据、项目身份、本地路径、Git remote 和 commit 信息；Reveal 时只解析本地会话文件路径（Codex `rollout_path` / Cursor `meta.json` 与 transcript 路径），不读消息正文 |
-| 写入 | 项目 UUID 和 `~/.threadrelink/registry.json` |
-| 绝不会 | 上传数据、提供遥测、写入 `~/.codex` 或 `~/.cursor`、修改会话数据库或 transcript、打开/解析消息正文 |
+| 读取 | Codex 与 Cursor Agent CLI 列表元数据、项目身份、本地路径、Git remote 和 commit 信息；Reveal / Copy @ Path 时只解析本地会话文件路径（Codex `rollout_path` / Cursor `meta.json` 与 transcript 路径），不读消息正文 |
+| 写入 | 项目 UUID 和 `~/.threadrelink/registry.json`；按用户操作将 `@路径` 写入系统剪贴板 |
+| 绝不会 | 上传数据、提供遥测、写入 `~/.codex` 或 `~/.cursor`、修改会话数据库或 transcript、自行打开/解析消息正文（用户把路径粘贴进 Cursor 后，由 Cursor 读取文件） |
 
 没有明确设置项目并授权前，ThreadRelink 不会扫描对话元数据。registry version 1/2 会在下次更新时自动迁移到 version 3。写入 version 3 后，更旧的 ThreadRelink 版本可能无法继续读取，因此不建议降级。
 
