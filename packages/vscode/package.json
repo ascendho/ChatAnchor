@@ -72,6 +72,16 @@
         "icon": "$(search)"
       },
       {
+        "command": "threadrelink.collapseTree",
+        "title": "ThreadRelink: Collapse Conversations",
+        "icon": "$(collapse-all)"
+      },
+      {
+        "command": "threadrelink.expandTree",
+        "title": "ThreadRelink: Expand Conversations",
+        "icon": "$(expand-all)"
+      },
+      {
         "command": "threadrelink.forgetProject",
         "title": "ThreadRelink: Forget Project",
         "icon": "$(trash)"
@@ -226,6 +236,16 @@
           "command": "threadrelink.findOldConversations",
           "when": "view == threadrelink.conversations && threadrelink.hasReadyProject",
           "group": "navigation@2"
+        },
+        {
+          "command": "threadrelink.collapseTree",
+          "when": "view == threadrelink.conversations && !threadrelink.treeCollapsed",
+          "group": "navigation@3"
+        },
+        {
+          "command": "threadrelink.expandTree",
+          "when": "view == threadrelink.conversations && threadrelink.treeCollapsed",
+          "group": "navigation@3"
         },
         {
           "command": "threadrelink.relink",

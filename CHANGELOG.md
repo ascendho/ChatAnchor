@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Remove the redundant Find Old Conversations row from the sidebar tree; use the
+  title-bar search icon instead.
+- Replace the one-way Collapse All control with expand/collapse actions that can
+  reopen the conversation tree.
+
 ## 0.5.2
 
 - Fix Reveal Conversation File so it opens the local Codex rollout/transcript

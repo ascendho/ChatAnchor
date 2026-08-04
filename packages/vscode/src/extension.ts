@@ -164,12 +164,20 @@ export async function activate(
   const output = vscode.window.createOutputChannel("ThreadRelink");
   const view = vscode.window.createTreeView("threadrelink.conversations", {
     treeDataProvider: provider,
-    showCollapseAll: true,
+    showCollapseAll: false,
   });
   context.subscriptions.push(provider, output, view);
 
   const hasConsent = (): boolean =>
     context.globalState.get<boolean>(CONSENT_KEY, false);
+
+  const setTreeCollapsedContext = async (collapsed: boolean): Promise<void> => {
+    await vscode.commands.executeCommand(
+      "setContext",
+      "threadrelink.treeCollapsed",
+      collapsed,
+    );
+  };
 
   const updateContexts = async (
     workspaces = provider.getWorkspaces(),
@@ -192,7 +200,29 @@ export async function activate(
           workspace.probe && workspace.probe.state !== "ready"
         ),
       ),
+      setTreeCollapsedContext(provider.isTreeCollapsed()),
     ]);
+  };
+
+  const collapseTree = async (): Promise<void> => {
+    provider.setPreferredCollapsed(true);
+    await setTreeCollapsedContext(true);
+  };
+
+  const expandTree = async (): Promise<void> => {
+    provider.setPreferredCollapsed(false);
+    await setTreeCollapsedContext(false);
+    for (const workspaceNode of provider.workspaceNodes()) {
+      try {
+        await view.reveal(workspaceNode, {
+          expand: 2,
+          focus: false,
+          select: false,
+        });
+      } catch {
+        // Reveal can fail if the view is hidden or the node disappeared.
+      }
+    }
   };
 
   const openGettingStarted = async (): Promise<void> => {
@@ -702,6 +732,18 @@ export async function activate(
         await findOldConversations(requestedPath);
       },
     ),
+    vscode.commands.registerCommand(
+      "threadrelink.collapseTree",
+      collapseTree,
+    ),
+    vscode.commands.registerCommand(
+      "threadrelink.expandTree",
+      expandTree,
+    ),
+    view.onDidExpandElement(() => {
+      provider.markPreferredExpanded();
+      void setTreeCollapsedContext(false);
+    }),
     vscode.commands.registerCommand(
       "threadrelink.forgetProject",
       async (projectId?: string) => {

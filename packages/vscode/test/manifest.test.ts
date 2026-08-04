@@ -25,6 +25,11 @@ interface ExtensionManifest {
   contributes: {
     commands: Array<{ command: string }>;
     menus: {
+      "view/title": Array<{
+        command: string;
+        when: string;
+        group: string;
+      }>;
       "view/item/context": Array<{
         command: string;
         when: string;
@@ -93,6 +98,30 @@ describe("VS Code extension manifest", () => {
     expect(commandIds).toContain("threadrelink.unlink");
     expect(commandIds).toContain("threadrelink.move");
     expect(commandIds).toContain("threadrelink.revealLocation");
+    expect(commandIds).toContain("threadrelink.collapseTree");
+    expect(commandIds).toContain("threadrelink.expandTree");
+
+    const titleMenus = manifest.contributes.menus["view/title"];
+    expect(titleMenus).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          command: "threadrelink.findOldConversations",
+          group: "navigation@2",
+        }),
+        expect.objectContaining({
+          command: "threadrelink.collapseTree",
+          when:
+            "view == threadrelink.conversations && !threadrelink.treeCollapsed",
+          group: "navigation@3",
+        }),
+        expect.objectContaining({
+          command: "threadrelink.expandTree",
+          when:
+            "view == threadrelink.conversations && threadrelink.treeCollapsed",
+          group: "navigation@3",
+        }),
+      ]),
+    );
 
     const revealMenus = manifest.contributes.menus["view/item/context"].filter(
       (entry) => entry.command === "threadrelink.revealLocation",
