@@ -1,4 +1,7 @@
+import { access } from "node:fs/promises";
+import { join } from "node:path";
 import { CodexAppServerClient, readCodexVersion } from "./codex.js";
+import { listCursorThreads, resolveCursorHome } from "./cursor.js";
 import { errorMessage } from "./errors.js";
 import { readGitVersion } from "./git.js";
 import { RegistryStore } from "./registry.js";
@@ -12,6 +15,7 @@ import type {
 export interface DoctorOptions {
   cwd?: string;
   codexPath?: string;
+  cursorHome?: string;
   registryHome?: string;
   legacyRegistryHome?: string;
   historyAdapterFactory?: HistoryAdapterFactory;
@@ -73,11 +77,34 @@ export async function runDoctor(
     });
   }
 
+  const cursorHome = resolveCursorHome(options.cursorHome);
+  try {
+    await access(join(cursorHome, "chats"));
+    const sample = await listCursorThreads({
+      projectPaths: [options.cwd ?? process.cwd()],
+      cursorHome,
+    });
+    checks.push({
+      name: "Cursor Agent CLI home",
+      status: "pass",
+      message:
+        `${cursorHome}; ${sample.length} conversation(s) visible for the current project path.`,
+    });
+  } catch (error) {
+    checks.push({
+      name: "Cursor Agent CLI home",
+      status: "warn",
+      message:
+        `${cursorHome} is not readable yet (${errorMessage(error)}). Cursor listing will be empty until Agent CLI chats exist.`,
+    });
+  }
+
   try {
     const probe = await new ThreadRelinkService({
       registryHome: options.registryHome,
       legacyRegistryHome: options.legacyRegistryHome,
       codexPath: options.codexPath,
+      cursorHome: options.cursorHome,
       historyAdapterFactory: options.historyAdapterFactory,
     }).probeProject(options.cwd ?? process.cwd());
     checks.push({

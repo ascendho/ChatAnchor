@@ -13,11 +13,74 @@ export interface WorkspaceResult {
   error: string | null;
 }
 
-export function conversationLabel(decision: MatchDecision): string {
-  const value = (decision.thread.name ?? decision.thread.preview ?? decision.thread.id)
+const SHORT_TITLE_MAX = 48;
+const DISPLAY_LABEL_MAX = 40;
+
+function codePoints(value: string): string[] {
+  return [...value];
+}
+
+function truncateLabel(value: string, max = DISPLAY_LABEL_MAX): string {
+  const points = codePoints(value);
+  if (points.length <= max) {
+    return value;
+  }
+  return `${points.slice(0, Math.max(1, max - 1)).join("")}…`;
+}
+
+function cleanConversationText(value: string): string {
+  return value
+    .replace(/!\[[\s\S]*?\]\([^)]*\)/gu, " ")
+    .replace(/\[Image\s*#?\d+\]/giu, " ")
+    .replace(/https?:\/\/\S+/gu, " ")
     .replace(/\s+/gu, " ")
     .trim();
-  return value.length <= 72 ? value : `${value.slice(0, 71)}…`;
+}
+
+function firstSentence(value: string): string {
+  const match = /^([\s\S]*?)(?:[。！？\n]|[.!?](?=\s|$)|$)/u.exec(value);
+  const sentence = match?.[1]?.trim() || value.trim();
+  return sentence || value.trim();
+}
+
+/** Compact sidebar label from metadata only (never reads message bodies). */
+export function formatConversationLabel(
+  name: string | null | undefined,
+  preview: string | null | undefined,
+  id: string,
+): string {
+  const trimmedName = typeof name === "string" ? name.trim() : "";
+  if (trimmedName) {
+    const cleanedName = cleanConversationText(trimmedName);
+    if (cleanedName && codePoints(cleanedName).length <= SHORT_TITLE_MAX) {
+      return cleanedName;
+    }
+    if (cleanedName) {
+      return truncateLabel(firstSentence(cleanedName));
+    }
+  }
+
+  const trimmedPreview = typeof preview === "string" ? preview.trim() : "";
+  if (trimmedPreview) {
+    const cleanedPreview = cleanConversationText(trimmedPreview);
+    if (cleanedPreview) {
+      return truncateLabel(firstSentence(cleanedPreview));
+    }
+  }
+
+  const shortId = id.trim();
+  if (!shortId) {
+    return "Untitled conversation";
+  }
+  return codePoints(shortId).slice(0, 8).join("");
+}
+
+export function conversationLabel(decision: MatchDecision): string {
+  return formatConversationLabel(
+    decision.thread.name,
+    decision.thread.preview,
+    decision.thread.id,
+  );
 }
 
 export function confidenceLabel(decision: MatchDecision): string | undefined {

@@ -43,6 +43,9 @@ interface ExtensionManifest {
       id: string;
       steps: WalkthroughStep[];
     }>;
+    configuration?: {
+      properties?: Record<string, unknown>;
+    };
   };
 }
 
@@ -130,13 +133,33 @@ describe("VS Code extension manifest", () => {
       expect.arrayContaining([
         expect.objectContaining({
           when:
-            "view == threadrelink.conversations && viewItem == threadrelink.linkedThread",
+            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\./",
           group: "inline@2",
         }),
         expect.objectContaining({
           when:
-            "view == threadrelink.conversations && viewItem == threadrelink.linkedThread",
+            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\./",
           group: "manage@1",
+        }),
+      ]),
+    );
+    expect(commandIds).toContain("threadrelink.collapseTree");
+    expect(
+      manifest.contributes.configuration?.properties?.["threadrelink.cursorHome"],
+    ).toBeDefined();
+    expect(
+      manifest.contributes.configuration?.properties?.["threadrelink.agentPath"],
+    ).toBeDefined();
+
+    const resumeMenus = manifest.contributes.menus["view/item/context"].filter(
+      (entry) => entry.command === "threadrelink.resume",
+    );
+    expect(resumeMenus).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          when:
+            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)$/",
+          group: "inline@1",
         }),
       ]),
     );

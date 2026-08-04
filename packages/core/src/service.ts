@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { stat } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import { CodexAppServerClient, runCodexResume } from "./codex.js";
-import { resolveConversationRolloutPath } from "./conversation-path.js";
+import { resolveConversationFilePath } from "./conversation-path.js";
+import { listCursorThreads } from "./cursor.js";
 import { ThreadRelinkError } from "./errors.js";
 import {
   ensureGitProjectId,
@@ -30,6 +31,7 @@ import {
 } from "./path.js";
 import { RegistryStore } from "./registry.js";
 import type {
+  ConversationProvider,
   HistoryAdapterFactory,
   ForgetProjectPreview,
   ForgetProjectResult,
@@ -54,8 +56,16 @@ export interface ThreadRelinkServiceOptions {
   legacyRegistryHome?: string;
   codexPath?: string;
   codexHome?: string;
+  cursorHome?: string;
   historyAdapterFactory?: HistoryAdapterFactory;
   now?: () => Date;
+}
+
+function threadKey(
+  provider: ConversationProvider,
+  threadId: string,
+): string {
+  return `${provider}\0${threadId}`;
 }
 
 /** @deprecated Use ThreadRelinkServiceOptions. */
@@ -114,9 +124,14 @@ function upsertSnapshots(
   registry: RegistryFile,
   threads: ThreadMetadata[],
 ): void {
-  const snapshots = new Map(registry.threads.map((thread) => [thread.id, thread]));
+  const snapshots = new Map(
+    registry.threads.map((thread) => [
+      threadKey(thread.provider, thread.id),
+      thread,
+    ]),
+  );
   for (const thread of threads) {
-    snapshots.set(thread.id, thread);
+    snapshots.set(threadKey(thread.provider, thread.id), thread);
   }
   registry.threads = [...snapshots.values()].sort(
     (left, right) => right.updatedAt - left.updatedAt,
@@ -130,7 +145,7 @@ function makeThreadLink(
   existing?: ThreadLink,
 ): ThreadLink {
   return {
-    provider: "codex",
+    provider: decision.thread.provider,
     threadId: decision.thread.id,
     projectId,
     linkedBy: existing?.linkedBy === "manual" ? "manual" : "automatic",
@@ -147,19 +162,22 @@ function makeThreadLink(
 
 function upsertExclusion(
   exclusions: ThreadExclusion[],
+  provider: ConversationProvider,
   threadId: string,
   projectId: string,
   createdAt: string,
 ): void {
   if (
     exclusions.some((item) =>
-      item.threadId === threadId && item.projectId === projectId
+      item.provider === provider
+      && item.threadId === threadId
+      && item.projectId === projectId
     )
   ) {
     return;
   }
   exclusions.push({
-    provider: "codex",
+    provider,
     threadId,
     projectId,
     createdAt,
@@ -176,6 +194,7 @@ export class ThreadRelinkService {
   public readonly registry: RegistryStore;
   public readonly codexPath?: string;
   public readonly codexHome?: string;
+  public readonly cursorHome?: string;
   private readonly historyAdapterFactory: HistoryAdapterFactory;
   private readonly now: () => Date;
 
@@ -186,6 +205,7 @@ export class ThreadRelinkService {
     );
     this.codexPath = options.codexPath;
     this.codexHome = options.codexHome;
+    this.cursorHome = options.cursorHome;
     this.historyAdapterFactory =
       options.historyAdapterFactory
       ?? (() => CodexAppServerClient.start({ codexPath: this.codexPath }));
@@ -193,8 +213,18 @@ export class ThreadRelinkService {
   }
 
   public async resolveConversationRolloutPath(threadId: string): Promise<string> {
-    return resolveConversationRolloutPath(threadId, {
+    return this.resolveConversationFilePath("codex", threadId);
+  }
+
+  public async resolveConversationFilePath(
+    provider: ConversationProvider,
+    threadId: string,
+    cwdHint?: string | null,
+  ): Promise<string> {
+    return resolveConversationFilePath(provider, threadId, {
       codexHome: this.codexHome,
+      cursorHome: this.cursorHome,
+      cwdHint,
     });
   }
 
@@ -534,18 +564,20 @@ export class ThreadRelinkService {
   public async resolveResumeTarget(
     threadId: string,
     inputPath = process.cwd(),
+    provider: ConversationProvider = "codex",
   ): Promise<ResumeTarget> {
     const { project, context } = await this.readyProject(inputPath);
     const registry = await this.registry.read();
     const link = registry.threadLinks.find(
       (candidate) =>
-        candidate.threadId === threadId
+        candidate.provider === provider
+        && candidate.threadId === threadId
         && candidate.projectId === project.id,
     );
     if (!link) {
       throw new ThreadRelinkError(
         "THREAD_NOT_LINKED",
-        `Codex conversation ${threadId} is not linked to ${project.name}.`,
+        `Conversation ${provider}/${threadId} is not linked to ${project.name}.`,
       );
     }
     return this.resolveResumeTargetForLink(
@@ -559,20 +591,33 @@ export class ThreadRelinkService {
   public async sync(inputPath = process.cwd()): Promise<SyncResult> {
     const { project, context, relocation } = await this.readyProject(inputPath);
     const adapter = await this.historyAdapterFactory();
-    let threads: ThreadMetadata[];
+    let codexThreads: ThreadMetadata[];
     try {
-      threads = await adapter.listThreads({ includeArchived: true });
+      codexThreads = await adapter.listThreads({ includeArchived: true });
     } finally {
       await adapter.close();
     }
 
+    const projectPaths = [
+      context.root,
+      ...project.aliases.map((alias) => alias.path),
+    ];
+    const cursorThreads = await listCursorThreads({
+      projectPaths,
+      cursorHome: this.cursorHome,
+    });
+    const threads = [...codexThreads, ...cursorThreads];
+
     const registry = await this.registry.read();
     const linkByThread = new Map(
-      registry.threadLinks.map((link) => [link.threadId, link]),
+      registry.threadLinks.map((link) => [
+        threadKey(link.provider, link.threadId),
+        link,
+      ]),
     );
     const exclusions = new Map(
       registry.threadExclusions.map((item) => [
-        `${item.threadId}\0${item.projectId}`,
+        `${threadKey(item.provider, item.threadId)}\0${item.projectId}`,
         item,
       ]),
     );
@@ -593,9 +638,12 @@ export class ThreadRelinkService {
       threads.map((thread) =>
         matchThreadToProject(thread, {
           project,
-          existingLink: linkByThread.get(thread.id) ?? null,
+          existingLink:
+            linkByThread.get(threadKey(thread.provider, thread.id)) ?? null,
           exclusion:
-            exclusions.get(`${thread.id}\0${project.id}`) ?? null,
+            exclusions.get(
+              `${threadKey(thread.provider, thread.id)}\0${project.id}`,
+            ) ?? null,
           gitRoot: context.kind === "git" ? context.root : null,
           shaExists,
         })
@@ -610,17 +658,21 @@ export class ThreadRelinkService {
     await this.registry.update((draft) => {
       upsertSnapshots(draft, threads);
       const links = new Map(
-        draft.threadLinks.map((link) => [link.threadId, link]),
+        draft.threadLinks.map((link) => [
+          threadKey(link.provider, link.threadId),
+          link,
+        ]),
       );
       for (const decision of linked) {
-        const existing = links.get(decision.thread.id);
+        const key = threadKey(decision.thread.provider, decision.thread.id);
+        const existing = links.get(key);
         const updated = makeThreadLink(
           decision,
           project.id,
           timestamp,
           existing,
         );
-        links.set(decision.thread.id, updated);
+        links.set(key, updated);
       }
       draft.threadLinks = [...links.values()];
     });
@@ -677,25 +729,36 @@ export class ThreadRelinkService {
   public async linkThread(
     threadId: string,
     inputPath = process.cwd(),
+    provider: ConversationProvider = "codex",
   ): Promise<ThreadLink> {
     const { project } = await this.readyProject(inputPath);
     let registry = await this.registry.read();
-    if (!registry.threads.some((thread) => thread.id === threadId)) {
+    if (
+      !registry.threads.some((thread) =>
+        thread.provider === provider && thread.id === threadId
+      )
+    ) {
       await this.sync(inputPath);
       registry = await this.registry.read();
     }
-    const thread = registry.threads.find((candidate) => candidate.id === threadId);
+    const thread = registry.threads.find((candidate) =>
+      candidate.provider === provider && candidate.id === threadId
+    );
     if (!thread) {
       throw new ThreadRelinkError(
         "THREAD_NOT_FOUND",
-        `Codex conversation not found: ${threadId}`,
+        `Conversation not found: ${provider}/${threadId}`,
       );
     }
-    const result = await this.linkThreadToProject(threadId, project.id);
+    const result = await this.linkThreadToProject(
+      threadId,
+      project.id,
+      provider,
+    );
     if (!result.link) {
       throw new ThreadRelinkError(
         "THREAD_LINK_FAILED",
-        `Failed to link Codex conversation ${threadId}.`,
+        `Failed to link conversation ${provider}/${threadId}.`,
       );
     }
     return result.link;
@@ -704,15 +767,16 @@ export class ThreadRelinkService {
   public async linkThreadToProject(
     threadId: string,
     projectId: string,
+    provider: ConversationProvider = "codex",
   ): Promise<ThreadCorrectionResult> {
     const registry = await this.registry.read();
     const thread = registry.threads.find((candidate) =>
-      candidate.id === threadId
+      candidate.provider === provider && candidate.id === threadId
     );
     if (!thread) {
       throw new ThreadRelinkError(
         "THREAD_NOT_FOUND",
-        `Codex conversation not found: ${threadId}`,
+        `Conversation not found: ${provider}/${threadId}`,
       );
     }
     const project = registry.projects.find((candidate) =>
@@ -737,10 +801,10 @@ export class ThreadRelinkService {
       .sort((left, right) => right.path.length - left.path.length)
       .find((alias) => isPathInside(thread.cwd, alias.path));
     const previous = registry.threadLinks.find((candidate) =>
-      candidate.threadId === threadId
+      candidate.provider === provider && candidate.threadId === threadId
     );
     const link: ThreadLink = {
-      provider: "codex",
+      provider,
       threadId,
       projectId,
       linkedBy: "manual",
@@ -757,18 +821,21 @@ export class ThreadRelinkService {
       if (previous && previous.projectId !== projectId) {
         upsertExclusion(
           draft.threadExclusions,
+          provider,
           threadId,
           previous.projectId,
           timestamp,
         );
       }
       draft.threadLinks = draft.threadLinks.filter(
-        (candidate) => candidate.threadId !== threadId,
+        (candidate) =>
+          !(candidate.provider === provider && candidate.threadId === threadId),
       );
       draft.threadLinks.push(link);
       draft.threadExclusions = draft.threadExclusions.filter(
         (candidate) =>
-          candidate.threadId !== threadId
+          candidate.provider !== provider
+          || candidate.threadId !== threadId
           || candidate.projectId !== projectId,
       );
     });
@@ -778,7 +845,9 @@ export class ThreadRelinkService {
       currentProjectId: projectId,
       link,
       exclusionProjectIds: updated.threadExclusions
-        .filter((item) => item.threadId === threadId)
+        .filter((item) =>
+          item.provider === provider && item.threadId === threadId
+        )
         .map((item) => item.projectId),
     };
   }
@@ -786,12 +855,17 @@ export class ThreadRelinkService {
   public async ignoreThreadForProject(
     threadId: string,
     projectId: string,
+    provider: ConversationProvider = "codex",
   ): Promise<ThreadCorrectionResult> {
     const registry = await this.registry.read();
-    if (!registry.threads.some((candidate) => candidate.id === threadId)) {
+    if (
+      !registry.threads.some((candidate) =>
+        candidate.provider === provider && candidate.id === threadId
+      )
+    ) {
       throw new ThreadRelinkError(
         "THREAD_NOT_FOUND",
-        `Codex conversation not found: ${threadId}`,
+        `Conversation not found: ${provider}/${threadId}`,
       );
     }
     if (!registry.projects.some((candidate) => candidate.id === projectId)) {
@@ -801,12 +875,12 @@ export class ThreadRelinkService {
       );
     }
     const previous = registry.threadLinks.find((candidate) =>
-      candidate.threadId === threadId
+      candidate.provider === provider && candidate.threadId === threadId
     );
     if (previous && previous.projectId !== projectId) {
       throw new ThreadRelinkError(
         "THREAD_LINKED_TO_ANOTHER_PROJECT",
-        `Codex conversation ${threadId} is linked to another project.`,
+        `Conversation ${provider}/${threadId} is linked to another project.`,
       );
     }
 
@@ -814,11 +888,13 @@ export class ThreadRelinkService {
     const updated = await this.registry.update((draft) => {
       draft.threadLinks = draft.threadLinks.filter(
         (candidate) =>
-          candidate.threadId !== threadId
+          candidate.provider !== provider
+          || candidate.threadId !== threadId
           || candidate.projectId !== projectId,
       );
       upsertExclusion(
         draft.threadExclusions,
+        provider,
         threadId,
         projectId,
         timestamp,
@@ -830,7 +906,9 @@ export class ThreadRelinkService {
       currentProjectId: null,
       link: null,
       exclusionProjectIds: updated.threadExclusions
-        .filter((item) => item.threadId === threadId)
+        .filter((item) =>
+          item.provider === provider && item.threadId === threadId
+        )
         .map((item) => item.projectId),
     };
   }
@@ -870,10 +948,12 @@ export class ThreadRelinkService {
         isPathInside(candidate.cwd, oldPath)
       )) {
         const existing = draft.threadLinks.find(
-          (candidate) => candidate.threadId === thread.id,
+          (candidate) =>
+            candidate.provider === thread.provider
+            && candidate.threadId === thread.id,
         );
         const link: ThreadLink = {
-          provider: "codex",
+          provider: thread.provider,
           threadId: thread.id,
           projectId: target.id,
           linkedBy: "manual",
@@ -892,18 +972,24 @@ export class ThreadRelinkService {
         if (existing && existing.projectId !== target.id) {
           upsertExclusion(
             draft.threadExclusions,
+            thread.provider,
             thread.id,
             existing.projectId,
             timestamp,
           );
         }
         draft.threadLinks = draft.threadLinks.filter(
-          (candidate) => candidate.threadId !== thread.id,
+          (candidate) =>
+            !(
+              candidate.provider === thread.provider
+              && candidate.threadId === thread.id
+            ),
         );
         draft.threadLinks.push(link);
         draft.threadExclusions = draft.threadExclusions.filter(
           (candidate) =>
-            candidate.threadId !== thread.id
+            candidate.provider !== thread.provider
+            || candidate.threadId !== thread.id
             || candidate.projectId !== target.id,
         );
         linkedThreads += 1;

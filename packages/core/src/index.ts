@@ -1,5 +1,6 @@
 export * from "./codex.js";
 export * from "./conversation-path.js";
+export * from "./cursor.js";
 export * from "./doctor.js";
 export * from "./errors.js";
 export * from "./git.js";

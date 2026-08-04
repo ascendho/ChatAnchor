@@ -1,5 +1,6 @@
-export const REGISTRY_SCHEMA_VERSION = 2 as const;
+export const REGISTRY_SCHEMA_VERSION = 3 as const;
 
+export type ConversationProvider = "codex" | "cursor";
 export type ProjectKind = "git" | "directory";
 export type LinkStatus = "linked" | "suggested" | "ignored" | "unlinked";
 export type LinkSource = "automatic" | "manual";
@@ -19,7 +20,7 @@ export interface GitInfo {
 }
 
 export interface ThreadMetadata {
-  provider: "codex";
+  provider: ConversationProvider;
   id: string;
   name: string | null;
   preview: string;
@@ -74,7 +75,7 @@ export interface LinkEvidence {
 }
 
 export interface ThreadLink {
-  provider: "codex";
+  provider: ConversationProvider;
   threadId: string;
   projectId: string;
   linkedBy: LinkSource;
@@ -86,7 +87,7 @@ export interface ThreadLink {
 }
 
 export interface ThreadExclusion {
-  provider: "codex";
+  provider: ConversationProvider;
   threadId: string;
   projectId: string;
   createdAt: string;

@@ -1,10 +1,39 @@
 import * as vscode from "vscode";
-import type { MatchDecision } from "@threadrelink/core";
+import type { ConversationProvider, MatchDecision } from "@threadrelink/core";
 import {
   conversationLabel,
   relativeDate,
   type WorkspaceResult,
 } from "./view-model.js";
+
+const PROVIDER_CATEGORIES: ReadonlyArray<{
+  provider: ConversationProvider;
+  label: string;
+}> = [
+  { provider: "codex", label: "Codex" },
+  { provider: "cursor", label: "Cursor" },
+];
+
+function linkedForProvider(
+  workspace: WorkspaceResult,
+  provider: ConversationProvider,
+): MatchDecision[] {
+  return (workspace.sync?.linked ?? []).filter(
+    (decision) => decision.thread.provider === provider,
+  );
+}
+
+function providerCategoryNode(
+  workspace: WorkspaceResult,
+  provider: ConversationProvider,
+): ThreadRelinkTreeNode {
+  return {
+    kind: "category",
+    workspace,
+    provider,
+    decisions: linkedForProvider(workspace, provider),
+  };
+}
 
 export type ThreadRelinkTreeNode =
   | {
@@ -14,6 +43,7 @@ export type ThreadRelinkTreeNode =
   | {
       kind: "category";
       workspace: WorkspaceResult;
+      provider: ConversationProvider;
       decisions: MatchDecision[];
     }
   | {
@@ -25,6 +55,7 @@ export type ThreadRelinkTreeNode =
       kind: "message";
       label: string;
       workspacePath?: string;
+      provider?: ConversationProvider;
     }
   | {
       kind: "action";
@@ -48,8 +79,30 @@ implements vscode.TreeDataProvider<ThreadRelinkTreeNode>, vscode.Disposable {
 
   public readonly onDidChangeTreeData = this.changed.event;
 
+  public constructor(private readonly extensionUri: vscode.Uri) {}
+
   public dispose(): void {
     this.changed.dispose();
+  }
+
+  private providerIcon(
+    provider: ConversationProvider,
+  ): { light: vscode.Uri; dark: vscode.Uri } {
+    const name = provider === "cursor" ? "cursor" : "codex";
+    return {
+      light: vscode.Uri.joinPath(
+        this.extensionUri,
+        "resources",
+        "providers",
+        `${name}-light.svg`,
+      ),
+      dark: vscode.Uri.joinPath(
+        this.extensionUri,
+        "resources",
+        "providers",
+        `${name}-dark.svg`,
+      ),
+    };
   }
 
   public setWorkspaces(workspaces: WorkspaceResult[]): void {
@@ -106,11 +159,18 @@ implements vscode.TreeDataProvider<ThreadRelinkTreeNode>, vscode.Disposable {
       return { kind: "workspace", workspace: element.workspace };
     }
     if (element.kind === "thread") {
-      return {
-        kind: "category",
-        workspace: element.workspace,
-        decisions: element.workspace.sync?.linked ?? [element.decision],
-      };
+      return providerCategoryNode(
+        element.workspace,
+        element.decision.thread.provider,
+      );
+    }
+    if (element.kind === "message" && element.provider && element.workspacePath) {
+      const workspace = this.workspaces.find(
+        (candidate) => candidate.path === element.workspacePath,
+      );
+      return workspace
+        ? providerCategoryNode(workspace, element.provider)
+        : undefined;
     }
     const workspacePath = element.workspacePath;
     if (!workspacePath) {
@@ -161,15 +221,16 @@ implements vscode.TreeDataProvider<ThreadRelinkTreeNode>, vscode.Disposable {
     }
 
     if (element.kind === "category") {
+      const label = element.provider === "cursor" ? "Cursor" : "Codex";
       const item = new vscode.TreeItem(
-        "Conversations",
+        label,
         this.preferredCollapsibleState,
       );
       item.description = String(element.decisions.length);
-      item.iconPath = new vscode.ThemeIcon("comment-discussion");
-      item.contextValue = "threadrelink.linked";
+      item.iconPath = this.providerIcon(element.provider);
+      item.contextValue = `threadrelink.linked.${element.provider}`;
       item.id =
-        `category:${this.expansionEpoch}:${element.workspace.path}`;
+        `category:${this.expansionEpoch}:${element.workspace.path}:${element.provider}`;
       return item;
     }
 
@@ -179,7 +240,7 @@ implements vscode.TreeDataProvider<ThreadRelinkTreeNode>, vscode.Disposable {
         vscode.TreeItemCollapsibleState.None,
       );
       item.iconPath = new vscode.ThemeIcon("info");
-      item.id = `message:${this.expansionEpoch}:${element.workspacePath ?? ""}:${element.label}`;
+      item.id = `message:${this.expansionEpoch}:${element.workspacePath ?? ""}:${element.provider ?? ""}:${element.label}`;
       return item;
     }
 
@@ -205,20 +266,25 @@ implements vscode.TreeDataProvider<ThreadRelinkTreeNode>, vscode.Disposable {
       conversationLabel(decision),
       vscode.TreeItemCollapsibleState.None,
     );
-    item.description =
-      `${relativeDate(decision.thread.updatedAt)}${decision.thread.archived ? " · archived" : ""}`;
+    const providerLabel = decision.thread.provider === "cursor" ? "Cursor" : "Codex";
+    item.description = [
+      relativeDate(decision.thread.updatedAt),
+      decision.thread.archived ? "archived" : null,
+    ].filter(Boolean).join(" · ");
     item.tooltip = [
       decision.thread.name ?? decision.thread.preview ?? decision.thread.id,
+      `Provider: ${providerLabel}`,
       `Thread: ${decision.thread.id}`,
       `Recorded cwd: ${decision.thread.cwd}`,
       ...decision.evidence.map((evidence) => evidence.description),
     ].join("\n");
-    item.iconPath = new vscode.ThemeIcon(
-      decision.thread.archived ? "archive" : "comment",
-    );
-    item.contextValue = "threadrelink.linkedThread";
+    item.iconPath = decision.thread.archived
+      ? new vscode.ThemeIcon("archive")
+      : this.providerIcon(decision.thread.provider);
+    item.contextValue =
+      `threadrelink.linkedThread.${decision.thread.provider}`;
     item.id =
-      `thread:${this.expansionEpoch}:${element.workspace.path}:${decision.thread.id}`;
+      `thread:${this.expansionEpoch}:${element.workspace.path}:${decision.thread.provider}:${decision.thread.id}`;
     return item;
   }
 
@@ -278,20 +344,22 @@ implements vscode.TreeDataProvider<ThreadRelinkTreeNode>, vscode.Disposable {
         ];
       }
 
-      if (sync.linked.length > 0) {
-        return [{
-          kind: "category",
-          workspace: element.workspace,
-          decisions: sync.linked,
-        }];
-      }
-      return [{
-        kind: "message",
-        label: "No conversations for this project yet.",
-        workspacePath: element.workspace.path,
-      }];
+      return PROVIDER_CATEGORIES.map(({ provider }) =>
+        providerCategoryNode(element.workspace, provider)
+      );
     }
     if (element.kind === "category") {
+      if (element.decisions.length === 0) {
+        const label = element.provider === "cursor"
+          ? "No Cursor conversations for this project."
+          : "No Codex conversations for this project.";
+        return [{
+          kind: "message",
+          label,
+          workspacePath: element.workspace.path,
+          provider: element.provider,
+        }];
+      }
       return element.decisions.map((decision) => ({
         kind: "thread" as const,
         workspace: element.workspace,

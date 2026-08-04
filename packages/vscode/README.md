@@ -11,7 +11,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/github/license/ascendho/ThreadRelink" alt="MIT License"></a>
 </p>
 
-ThreadRelink 是一个本地 VS Code 扩展，全部操作都可以通过侧边栏、右键菜单和 VS Code 命令面板完成。项目文件夹改名或移动后，它仍然可以把原来的 Codex 对话连接到这个项目。Codex 会记录对话开始时的工作目录。例如把 `toolspec` 改成 `finspec` 后，按路径筛选的恢复列表可能不再显示旧对话，但聊天文件实际上仍在本机。ThreadRelink 给项目分配一个不随路径变化的本地 UUID，记录新旧路径，并从新目录继续原线程。
+ThreadRelink 是一个本地 VS Code 扩展，全部操作都可以通过侧边栏、右键菜单和 VS Code 命令面板完成。项目文件夹改名或移动后，它仍然可以把原来的 Codex / Cursor Agent CLI 对话连接到这个项目。例如把 `toolspec` 改成 `finspec` 后，按路径筛选的恢复列表可能不再显示旧对话，但聊天文件实际上仍在本机。ThreadRelink 给项目分配一个不随路径变化的本地 UUID，记录新旧路径，并从新目录继续原线程（Codex：`codex resume --cd …`；Cursor：`agent --resume … --workspace …`）。
 
 ## 获取插件
 
@@ -22,11 +22,11 @@ ThreadRelink 是一个本地 VS Code 扩展，全部操作都可以通过侧边�
 
 | ThreadRelink | 具体内容 |
 | --- | --- |
-| 读取 | Codex 列表元数据、项目身份、本地路径、Git remote 和 commit 信息；在 Reveal Conversation File 时只读取本地 Codex DB 的 `rollout_path`（或按 thread id 匹配 session 文件名） |
+| 读取 | Codex 与 Cursor Agent CLI 列表元数据、项目身份、本地路径、Git remote 和 commit 信息；Reveal 时只解析本地会话文件路径（Codex `rollout_path` / Cursor `meta.json` 与 transcript 路径），不读消息正文 |
 | 写入 | 项目 UUID 和 `~/.threadrelink/registry.json` |
-| 绝不会 | 上传数据、提供遥测、写入 `~/.codex`、修改 Codex 数据库或 transcript、打开/解析 transcript 消息正文 |
+| 绝不会 | 上传数据、提供遥测、写入 `~/.codex` 或 `~/.cursor`、修改会话数据库或 transcript、打开/解析消息正文 |
 
-没有明确设置项目并授权前，ThreadRelink 不会扫描对话元数据。registry version 1 会在下次更新时自动迁移到 version 2。写入 version 2 后，ThreadRelink 0.4 可能无法继续读取，因此不建议降级。
+没有明确设置项目并授权前，ThreadRelink 不会扫描对话元数据。registry version 1/2 会在下次更新时自动迁移到 version 3。写入 version 3 后，更旧的 ThreadRelink 版本可能无法继续读取，因此不建议降级。
 
 ## 安全
 

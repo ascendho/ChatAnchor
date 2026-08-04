@@ -385,6 +385,51 @@ describe("ThreadRelinkService", () => {
     ).rejects.toBeDefined();
   });
 
+  it("resolves resume targets for linked Cursor conversations", async () => {
+    const base = await mkdtemp(join(tmpdir(), "threadrelink-cursor-resume-"));
+    cleanup.push(base);
+    const root = join(base, "project");
+    const cursorHome = join(base, "cursor-home");
+    await mkdir(root);
+    await execFileAsync("git", ["init", root]);
+    const canonicalRoot = await realpath(root);
+    const chatId = "a4efc723-68f4-45f5-8474-952597e995e8";
+    const { cursorChatBucketId } = await import("../src/cursor.js");
+    const chatDir = join(
+      cursorHome,
+      "chats",
+      cursorChatBucketId(canonicalRoot),
+      chatId,
+    );
+    await mkdir(chatDir, { recursive: true });
+    await writeFile(
+      join(chatDir, "meta.json"),
+      JSON.stringify({
+        hasConversation: true,
+        title: "Project Conversation Location",
+        cwd: canonicalRoot,
+        createdAtMs: 1_700_000_000_000,
+        updatedAtMs: 1_700_000_100_000,
+      }),
+    );
+    const service = new ThreadRelinkService({
+      registryHome: join(base, "state"),
+      historyAdapterFactory: async () => adapterFor([]),
+      cursorHome,
+    });
+    await service.setupProject(root);
+    const synced = await service.sync(root);
+    expect(synced.linked.some((item) =>
+      item.thread.provider === "cursor" && item.thread.id === chatId
+    )).toBe(true);
+    const target = await service.resolveResumeTarget(chatId, root, "cursor");
+    expect(target).toMatchObject({
+      path: canonicalRoot,
+      mode: "project-root",
+      warning: null,
+    });
+  });
+
   it("reports a new project location and resumes from the preserved subdirectory", async () => {
     const base = await mkdtemp(join(tmpdir(), "threadrelink-subdirectory-"));
     cleanup.push(base);

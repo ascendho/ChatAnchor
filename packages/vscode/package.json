@@ -2,7 +2,7 @@
   "name": "threadrelink",
   "displayName": "ThreadRelink",
   "description": "A VS Code extension that keeps local Codex conversations connected to their projects after repositories are renamed or moved.",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "icon": "resources/threadrelink.png",
   "publisher": "ascendho",
   "repository": {
@@ -140,7 +140,7 @@
       "threadrelink": [
         {
           "id": "threadrelink.conversations",
-          "name": "Codex Conversations"
+          "name": "Conversations"
         }
       ]
     },
@@ -208,10 +208,10 @@
           {
             "id": "threadrelink.gettingStarted.resume",
             "title": "Resume the original conversation",
-            "description": "Hover a conversation and select the continue icon. ThreadRelink opens `codex resume --cd <new-path> <thread-id>` in an integrated terminal.\n[Resume a conversation](command:threadrelink.resume)",
+            "description": "Hover a conversation and select the continue icon. ThreadRelink opens `codex resume --cd <new-path> <thread-id>` or `agent --resume <chat-id> --workspace <new-path>` in an integrated terminal.\n[Resume a conversation](command:threadrelink.resume)",
             "media": {
               "image": "media/guide/05-resumed-terminal.png",
-              "altText": "Codex conversation resumed in an integrated terminal at the new path"
+              "altText": "Conversation resumed in an integrated terminal at the new path"
             },
             "completionEvents": [
               "onCommand:threadrelink.resume"
@@ -266,27 +266,27 @@
       "view/item/context": [
         {
           "command": "threadrelink.resume",
-          "when": "view == threadrelink.conversations && viewItem == threadrelink.linkedThread",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)$/",
           "group": "inline@1"
         },
         {
           "command": "threadrelink.revealLocation",
-          "when": "view == threadrelink.conversations && viewItem == threadrelink.linkedThread",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\./",
           "group": "inline@2"
         },
         {
           "command": "threadrelink.revealLocation",
-          "when": "view == threadrelink.conversations && viewItem == threadrelink.linkedThread",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\./",
           "group": "manage@1"
         },
         {
           "command": "threadrelink.move",
-          "when": "view == threadrelink.conversations && viewItem == threadrelink.linkedThread",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\./",
           "group": "manage@2"
         },
         {
           "command": "threadrelink.unlink",
-          "when": "view == threadrelink.conversations && viewItem == threadrelink.linkedThread",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\./",
           "group": "manage@3"
         }
       ]
@@ -299,10 +299,20 @@
           "default": "codex",
           "description": "Codex executable name or absolute path."
         },
+        "threadrelink.agentPath": {
+          "type": "string",
+          "default": "agent",
+          "description": "Cursor Agent CLI executable name or absolute path (used to resume Cursor conversations)."
+        },
+        "threadrelink.cursorHome": {
+          "type": "string",
+          "default": "",
+          "description": "Optional Cursor home directory for Agent CLI chats. Leave empty to use CURSOR_HOME or ~/.cursor."
+        },
         "threadrelink.autoSync": {
           "type": "boolean",
           "default": true,
-          "description": "Refresh local Codex conversation metadata when an explicitly set-up, trusted project opens, after consent."
+          "description": "Refresh local Codex and Cursor conversation metadata when an explicitly set-up, trusted project opens, after consent."
         },
         "threadrelink.registryHome": {
           "type": "string",

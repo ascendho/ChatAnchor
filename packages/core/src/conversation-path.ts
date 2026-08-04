@@ -2,8 +2,10 @@ import { DatabaseSync } from "node:sqlite";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { access, readdir, stat } from "node:fs/promises";
+import { resolveCursorConversationPath } from "./cursor.js";
 import { ThreadRelinkError } from "./errors.js";
 import { canonicalizeExistingPath, normalizeAbsolutePath } from "./path.js";
+import type { ConversationProvider } from "./types.js";
 
 const STATE_DB_PATTERN = /^state_(\d+)\.sqlite$/u;
 
@@ -137,12 +139,36 @@ export async function resolveConversationRolloutPath(
   threadId: string,
   options: { codexHome?: string } = {},
 ): Promise<string> {
+  return resolveConversationFilePath("codex", threadId, options);
+}
+
+/**
+ * Resolve a local conversation file/directory for reveal-in-OS.
+ * Never opens transcript message bodies.
+ */
+export async function resolveConversationFilePath(
+  provider: ConversationProvider,
+  threadId: string,
+  options: {
+    codexHome?: string;
+    cursorHome?: string;
+    cwdHint?: string | null;
+  } = {},
+): Promise<string> {
   const id = threadId.trim();
   if (!id) {
     throw new ThreadRelinkError(
       "CONVERSATION_FILE_NOT_FOUND",
-      "A Codex conversation id is required to reveal its local file.",
+      "A conversation id is required to reveal its local file.",
     );
+  }
+
+  if (provider === "cursor") {
+    const path = await resolveCursorConversationPath(id, {
+      cursorHome: options.cursorHome,
+      cwdHint: options.cwdHint,
+    });
+    return canonicalizeExistingPath(path);
   }
 
   const codexHome = resolveCodexHome(options.codexHome);

@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import {
   ThreadRelinkService,
+  buildCursorResumeArgs,
   errorMessage,
   runDoctor,
   type MatchDecision,
@@ -28,6 +29,8 @@ const REPAIR_WARNING_PREFIX = "threadrelink.repairWarning.v1";
 
 interface Settings {
   codexPath: string;
+  agentPath: string;
+  cursorHome: string | undefined;
   registryHome: string | undefined;
   legacyRegistryHome: string | undefined;
   autoSync: boolean;
@@ -65,8 +68,16 @@ function readSettings(): Settings {
     ?? explicitSetting<string>(legacy, "codexPath")
     ?? "codex"
   ).trim();
+  const agentPath = (
+    explicitSetting<string>(config, "agentPath") ?? "agent"
+  ).trim();
+  const cursorHome = (
+    explicitSetting<string>(config, "cursorHome") ?? ""
+  ).trim();
   return {
     codexPath: codexPath || "codex",
+    agentPath: agentPath || "agent",
+    cursorHome: cursorHome || undefined,
     registryHome: registryHome || undefined,
     legacyRegistryHome: legacyRegistryHome || undefined,
     autoSync:
@@ -80,6 +91,7 @@ function makeService(): ThreadRelinkService {
   const settings = readSettings();
   return new ThreadRelinkService({
     codexPath: settings.codexPath,
+    cursorHome: settings.cursorHome,
     registryHome: settings.registryHome,
     legacyRegistryHome: settings.legacyRegistryHome,
   });
@@ -160,7 +172,7 @@ function recoveryItem(decision: MatchDecision): RecoveryPick {
 export async function activate(
   context: vscode.ExtensionContext,
 ): Promise<void> {
-  const provider = new ThreadRelinkTreeProvider();
+  const provider = new ThreadRelinkTreeProvider(context.extensionUri);
   const output = vscode.window.createOutputChannel("ThreadRelink");
   const view = vscode.window.createTreeView("threadrelink.conversations", {
     treeDataProvider: provider,
@@ -238,7 +250,7 @@ export async function activate(
       return true;
     }
     const choice = await vscode.window.showInformationMessage(
-      "ThreadRelink reads local Codex conversation metadata (thread ID, title, cwd, timestamps, and Git info). It does not copy message bodies or upload data.",
+      "ThreadRelink reads local Codex and Cursor Agent CLI conversation metadata (thread ID, title, cwd, timestamps, and Git info). It does not copy message bodies or upload data.",
       { modal: true },
       "Enable ThreadRelink",
     );
@@ -399,7 +411,11 @@ export async function activate(
     if (choice !== "Link conversation") {
       return;
     }
-    await makeService().linkThread(decision.thread.id, workspacePath);
+    await makeService().linkThread(
+      decision.thread.id,
+      workspacePath,
+      decision.thread.provider,
+    );
     void vscode.window.showInformationMessage(
       `Linked “${conversationLabel(decision)}” to this project.`,
     );
@@ -580,6 +596,7 @@ export async function activate(
       await makeService().ignoreThreadForProject(
         node.decision.thread.id,
         projectId,
+        node.decision.thread.provider,
       );
       void vscode.window.showInformationMessage(
         `Removed “${label}” from this project. You can restore it from Find Old Conversations.`,
@@ -653,6 +670,7 @@ export async function activate(
       await service.linkThreadToProject(
         node.decision.thread.id,
         selected.projectId,
+        node.decision.thread.provider,
       );
       void vscode.window.showInformationMessage(
         `Moved “${label}” to ${selected.label}.`,
@@ -780,26 +798,40 @@ export async function activate(
         if (!selected || selected.kind !== "thread") {
           return;
         }
+        const conversationProvider = selected.decision.thread.provider;
         try {
           const target = await makeService().resolveResumeTarget(
             selected.decision.thread.id,
             selected.workspace.path,
+            conversationProvider,
           );
           if (target.warning) {
             void vscode.window.showWarningMessage(target.warning);
           }
-          const terminal = vscode.window.createTerminal({
-            name: `ThreadRelink: ${conversationLabel(selected.decision)}`,
-            shellPath: readSettings().codexPath,
-            shellArgs: [
-              "resume",
-              "--cd",
-              target.path,
-              selected.decision.thread.id,
-            ],
-            cwd: target.path,
-            iconPath: new vscode.ThemeIcon("history"),
-          });
+          const settings = readSettings();
+          const terminal = conversationProvider === "cursor"
+            ? vscode.window.createTerminal({
+              name: `ThreadRelink: ${conversationLabel(selected.decision)}`,
+              shellPath: settings.agentPath,
+              shellArgs: buildCursorResumeArgs(
+                selected.decision.thread.id,
+                target.path,
+              ),
+              cwd: target.path,
+              iconPath: new vscode.ThemeIcon("history"),
+            })
+            : vscode.window.createTerminal({
+              name: `ThreadRelink: ${conversationLabel(selected.decision)}`,
+              shellPath: settings.codexPath,
+              shellArgs: [
+                "resume",
+                "--cd",
+                target.path,
+                selected.decision.thread.id,
+              ],
+              cwd: target.path,
+              iconPath: new vscode.ThemeIcon("history"),
+            });
           terminal.show();
         } catch (error) {
           void vscode.window.showErrorMessage(
@@ -821,11 +853,15 @@ export async function activate(
           return;
         }
         try {
-          const rolloutPath = await makeService()
-            .resolveConversationRolloutPath(selected.decision.thread.id);
+          const conversationPath = await makeService()
+            .resolveConversationFilePath(
+              selected.decision.thread.provider,
+              selected.decision.thread.id,
+              selected.decision.thread.cwd,
+            );
           await vscode.commands.executeCommand(
             "revealFileInOS",
-            vscode.Uri.file(rolloutPath),
+            vscode.Uri.file(conversationPath),
           );
         } catch (error) {
           void vscode.window.showErrorMessage(
@@ -873,6 +909,7 @@ export async function activate(
       const report = await runDoctor({
         cwd: folder.uri.fsPath,
         codexPath: settings.codexPath,
+        cursorHome: settings.cursorHome,
         registryHome: settings.registryHome,
         legacyRegistryHome: settings.legacyRegistryHome,
       });
@@ -895,6 +932,8 @@ export async function activate(
     vscode.workspace.onDidChangeConfiguration(async (event) => {
       if (
         event.affectsConfiguration("threadrelink.codexPath")
+        || event.affectsConfiguration("threadrelink.agentPath")
+        || event.affectsConfiguration("threadrelink.cursorHome")
         || event.affectsConfiguration("threadrelink.registryHome")
         || event.affectsConfiguration("reporecall.codexPath")
         || event.affectsConfiguration("reporecall.registryHome")
@@ -937,7 +976,7 @@ export async function activate(
   if (!context.globalState.get<boolean>(ONBOARDING_SHOWN_KEY, false)) {
     await context.globalState.update(ONBOARDING_SHOWN_KEY, true);
     void vscode.window.showInformationMessage(
-      "ThreadRelink is ready. Set up each project explicitly to keep its local Codex conversations discoverable after a rename.",
+      "ThreadRelink is ready. Set up each project explicitly to keep its local Codex and Cursor conversations discoverable after a rename.",
       "Open Getting Started",
     ).then(async (choice) => {
       if (choice === "Open Getting Started") {

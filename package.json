@@ -1,6 +1,6 @@
 {
   "name": "threadrelink-monorepo",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "private": true,
   "description": "Path-independent discovery and recovery for local Codex conversations.",
   "license": "MIT",

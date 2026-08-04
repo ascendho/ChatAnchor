@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.5.3
+
+- Add Cursor Agent CLI conversation discovery from `~/.cursor/chats` (list,
+  match/link, reveal, and resume via `agent --resume <chat-id> --workspace
+  <path>`).
+- Show Codex/Cursor provider logos in the Conversations sidebar.
+- Shorten sidebar conversation labels from long Codex previews (noise strip,
+  first sentence, ~40-character cap); full text stays in the tooltip.
+- Add `threadrelink.agentPath` for the Cursor Agent CLI executable.
+- Widen the local registry to schema version 3 with `codex | cursor` providers
+  and composite thread identity.
 - Remove the redundant Find Old Conversations row from the sidebar tree; use the
   title-bar search icon instead.
 - Replace the one-way Collapse All control with expand/collapse actions that can

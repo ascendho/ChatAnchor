@@ -2,12 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   confidenceLabel,
   conversationLabel,
+  formatConversationLabel,
   formatRelocationReport,
   relativeDate,
 } from "../src/view-model.js";
 import type { MatchDecision } from "@threadrelink/core";
 
-function decision(): MatchDecision {
+function decision(overrides: Partial<MatchDecision["thread"]> = {}): MatchDecision {
   return {
     thread: {
       provider: "codex",
@@ -21,6 +22,7 @@ function decision(): MatchDecision {
       cliVersion: "0.145.0",
       modelProvider: "openai",
       gitInfo: null,
+      ...overrides,
     },
     status: "suggested",
     projectId: "project-1",
@@ -39,6 +41,42 @@ describe("VS Code view model", () => {
   it("uses metadata-only titles and confidence labels", () => {
     expect(conversationLabel(decision())).toBe("A conversation title");
     expect(confidenceLabel(decision())).toBe("72% match");
+  });
+
+  it("keeps short Cursor-style titles as-is", () => {
+    expect(formatConversationLabel(
+      "Project Conversation Location",
+      "Project Conversation Location",
+      "a4efc723-68f4-45f5-8474-952597e995e8",
+    )).toBe("Project Conversation Location");
+  });
+
+  it("shortens long Codex previews and strips image noise", () => {
+    const preview = [
+      "你先阅读此项目，然后： 1. [Image #1] 如图所示，这是 bug 吗？",
+      "还是没有因为没有重启 vs code? 我不知道这个现象在以后是否还复现。",
+    ].join(" ");
+    const label = formatConversationLabel(null, preview, "thread-long");
+    expect(label).not.toContain("[Image");
+    expect(label.length).toBeLessThanOrEqual(41);
+    expect(label.endsWith("…") || label.includes("你先阅读")).toBe(true);
+    expect(conversationLabel(decision({
+      name: null,
+      preview,
+      id: "thread-long",
+    }))).toBe(label);
+  });
+
+  it("uses the first sentence when preview is multi-sentence", () => {
+    expect(formatConversationLabel(
+      null,
+      "Fix the matcher. Then update docs and publish.",
+      "thread-2",
+    )).toBe("Fix the matcher");
+  });
+
+  it("falls back to a short id when name and preview are empty", () => {
+    expect(formatConversationLabel(null, "", "abcdef12-3456-7890")).toBe("abcdef12");
   });
 
   it("formats recent dates compactly", () => {
