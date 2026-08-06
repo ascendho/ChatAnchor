@@ -6,6 +6,7 @@ export * from "./errors.js";
 export * from "./git.js";
 export * from "./identity.js";
 export * from "./matcher.js";
+export * from "./opencode.js";
 export * from "./path.js";
 export * from "./registry.js";
 export * from "./service.js";

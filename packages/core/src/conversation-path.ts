@@ -163,6 +163,13 @@ export async function resolveConversationFilePath(
     );
   }
 
+  if (provider === "opencode") {
+    throw new ThreadRelinkError(
+      "CONVERSATION_FILE_NOT_SUPPORTED",
+      "OpenCode sessions are stored in the local opencode.db database and do not map to a standalone conversation file.",
+    );
+  }
+
   if (provider === "cursor") {
     const path = await resolveCursorConversationPath(id, {
       cursorHome: options.cursorHome,

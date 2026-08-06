@@ -1,8 +1,12 @@
 import * as vscode from "vscode";
+import { access } from "node:fs/promises";
 import {
   ThreadRelinkService,
   buildCursorResumeArgs,
+  buildOpenCodeResumeArgs,
   errorMessage,
+  resolveExecutablePath,
+  resolveOpenCodeSessionDirectory,
   runDoctor,
   type MatchDecision,
   type ProjectProbe,
@@ -31,6 +35,8 @@ interface Settings {
   codexPath: string;
   agentPath: string;
   cursorHome: string | undefined;
+  openCodePath: string;
+  openCodeHome: string | undefined;
   registryHome: string | undefined;
   legacyRegistryHome: string | undefined;
   autoSync: boolean;
@@ -74,10 +80,18 @@ function readSettings(): Settings {
   const cursorHome = (
     explicitSetting<string>(config, "cursorHome") ?? ""
   ).trim();
+  const openCodePath = (
+    explicitSetting<string>(config, "opencodePath") ?? "opencode"
+  ).trim();
+  const openCodeHome = (
+    explicitSetting<string>(config, "opencodeHome") ?? ""
+  ).trim();
   return {
     codexPath: codexPath || "codex",
     agentPath: agentPath || "agent",
     cursorHome: cursorHome || undefined,
+    openCodePath: openCodePath || "opencode",
+    openCodeHome: openCodeHome || undefined,
     registryHome: registryHome || undefined,
     legacyRegistryHome: legacyRegistryHome || undefined,
     autoSync:
@@ -92,6 +106,8 @@ function makeService(): ThreadRelinkService {
   return new ThreadRelinkService({
     codexPath: settings.codexPath,
     cursorHome: settings.cursorHome,
+    openCodePath: settings.openCodePath,
+    openCodeHome: settings.openCodeHome,
     registryHome: settings.registryHome,
     legacyRegistryHome: settings.legacyRegistryHome,
   });
@@ -809,29 +825,67 @@ export async function activate(
             void vscode.window.showWarningMessage(target.warning);
           }
           const settings = readSettings();
-          const terminal = conversationProvider === "cursor"
-            ? vscode.window.createTerminal({
-              name: `ThreadRelink: ${conversationLabel(selected.decision)}`,
-              shellPath: settings.agentPath,
-              shellArgs: buildCursorResumeArgs(
-                selected.decision.thread.id,
-                target.path,
-              ),
-              cwd: target.path,
-              iconPath: new vscode.ThemeIcon("history"),
-            })
-            : vscode.window.createTerminal({
-              name: `ThreadRelink: ${conversationLabel(selected.decision)}`,
-              shellPath: settings.codexPath,
-              shellArgs: [
-                "resume",
-                "--cd",
-                target.path,
-                selected.decision.thread.id,
-              ],
-              cwd: target.path,
-              iconPath: new vscode.ThemeIcon("history"),
-            });
+          let shellPath: string;
+          let shellArgs: string[];
+          if (conversationProvider === "cursor") {
+            const executable = resolveExecutablePath(settings.agentPath);
+            if (!executable) {
+              void vscode.window.showErrorMessage(
+                `ThreadRelink: Could not find the "${settings.agentPath}" executable on PATH. Set "threadrelink.agentPath" to its absolute path.`,
+              );
+              return;
+            }
+            shellPath = executable;
+            shellArgs = buildCursorResumeArgs(
+              selected.decision.thread.id,
+              target.path,
+            );
+          } else if (conversationProvider === "opencode") {
+            const sessionDirectory = await resolveOpenCodeSessionDirectory(
+              selected.decision.thread.id,
+              { openCodeHome: settings.openCodeHome },
+            );
+            if (
+              !sessionDirectory
+              || await access(sessionDirectory).then(() => true).catch(() => false) === false
+            ) {
+              void vscode.window.showErrorMessage(
+                `ThreadRelink: OpenCode cannot resume this session because its original directory (${sessionDirectory ?? selected.decision.thread.cwd}) no longer exists after the move. OpenCode requires the original session directory to resume a session; use "opencode export <session-id>" then "opencode import" from the new path to relocate it.`,
+              );
+              return;
+            }
+            const openCodeExecutable = resolveExecutablePath(settings.openCodePath);
+            if (!openCodeExecutable) {
+              void vscode.window.showErrorMessage(
+                `ThreadRelink: Could not find the "${settings.openCodePath}" executable on PATH. Set "threadrelink.opencodePath" to its absolute path.`,
+              );
+              return;
+            }
+            shellPath = openCodeExecutable;
+            shellArgs = buildOpenCodeResumeArgs(selected.decision.thread.id);
+          } else {
+            const executable = resolveExecutablePath(settings.codexPath);
+            if (!executable) {
+              void vscode.window.showErrorMessage(
+                `ThreadRelink: Could not find the "${settings.codexPath}" executable on PATH. Set "threadrelink.codexPath" to its absolute path.`,
+              );
+              return;
+            }
+            shellPath = executable;
+            shellArgs = [
+              "resume",
+              "--cd",
+              target.path,
+              selected.decision.thread.id,
+            ];
+          }
+          const terminal = vscode.window.createTerminal({
+            name: `ThreadRelink: ${conversationLabel(selected.decision)}`,
+            shellPath,
+            shellArgs,
+            cwd: target.path,
+            iconPath: new vscode.ThemeIcon("history"),
+          });
           terminal.show();
         } catch (error) {
           void vscode.window.showErrorMessage(
@@ -948,6 +1002,8 @@ export async function activate(
         cwd: folder.uri.fsPath,
         codexPath: settings.codexPath,
         cursorHome: settings.cursorHome,
+        openCodePath: settings.openCodePath,
+        openCodeHome: settings.openCodeHome,
         registryHome: settings.registryHome,
         legacyRegistryHome: settings.legacyRegistryHome,
       });
@@ -972,6 +1028,8 @@ export async function activate(
         event.affectsConfiguration("threadrelink.codexPath")
         || event.affectsConfiguration("threadrelink.agentPath")
         || event.affectsConfiguration("threadrelink.cursorHome")
+        || event.affectsConfiguration("threadrelink.opencodePath")
+        || event.affectsConfiguration("threadrelink.opencodeHome")
         || event.affectsConfiguration("threadrelink.registryHome")
         || event.affectsConfiguration("reporecall.codexPath")
         || event.affectsConfiguration("reporecall.registryHome")

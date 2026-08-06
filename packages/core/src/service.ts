@@ -5,6 +5,7 @@ import { CodexAppServerClient, runCodexResume } from "./codex.js";
 import { resolveConversationFilePath } from "./conversation-path.js";
 import { listCursorThreads } from "./cursor.js";
 import { ThreadRelinkError } from "./errors.js";
+import { listOpenCodeThreads } from "./opencode.js";
 import {
   ensureGitProjectId,
   excludeFolderIdentity,
@@ -57,6 +58,8 @@ export interface ThreadRelinkServiceOptions {
   codexPath?: string;
   codexHome?: string;
   cursorHome?: string;
+  openCodePath?: string;
+  openCodeHome?: string;
   historyAdapterFactory?: HistoryAdapterFactory;
   now?: () => Date;
 }
@@ -195,6 +198,8 @@ export class ThreadRelinkService {
   public readonly codexPath?: string;
   public readonly codexHome?: string;
   public readonly cursorHome?: string;
+  public readonly openCodePath?: string;
+  public readonly openCodeHome?: string;
   private readonly historyAdapterFactory: HistoryAdapterFactory;
   private readonly now: () => Date;
 
@@ -206,6 +211,8 @@ export class ThreadRelinkService {
     this.codexPath = options.codexPath;
     this.codexHome = options.codexHome;
     this.cursorHome = options.cursorHome;
+    this.openCodePath = options.openCodePath;
+    this.openCodeHome = options.openCodeHome;
     this.historyAdapterFactory =
       options.historyAdapterFactory
       ?? (() => CodexAppServerClient.start({ codexPath: this.codexPath }));
@@ -606,7 +613,10 @@ export class ThreadRelinkService {
       projectPaths,
       cursorHome: this.cursorHome,
     });
-    const threads = [...codexThreads, ...cursorThreads];
+    const openCodeThreads = await listOpenCodeThreads({
+      openCodeHome: this.openCodeHome,
+    });
+    const threads = [...codexThreads, ...cursorThreads, ...openCodeThreads];
 
     const registry = await this.registry.read();
     const linkByThread = new Map(

@@ -12,7 +12,20 @@ const PROVIDER_CATEGORIES: ReadonlyArray<{
 }> = [
   { provider: "codex", label: "Codex" },
   { provider: "cursor", label: "Cursor" },
+  { provider: "opencode", label: "OpenCode" },
 ];
+
+const PROVIDER_ICON_NAME: Record<ConversationProvider, string> = {
+  codex: "codex",
+  cursor: "cursor",
+  opencode: "opencode",
+};
+
+const PROVIDER_LABEL: Record<ConversationProvider, string> = {
+  codex: "Codex",
+  cursor: "Cursor",
+  opencode: "OpenCode",
+};
 
 function linkedForProvider(
   workspace: WorkspaceResult,
@@ -88,7 +101,7 @@ implements vscode.TreeDataProvider<ThreadRelinkTreeNode>, vscode.Disposable {
   private providerIcon(
     provider: ConversationProvider,
   ): { light: vscode.Uri; dark: vscode.Uri } {
-    const name = provider === "cursor" ? "cursor" : "codex";
+    const name = PROVIDER_ICON_NAME[provider] ?? "codex";
     return {
       light: vscode.Uri.joinPath(
         this.extensionUri,
@@ -221,7 +234,7 @@ implements vscode.TreeDataProvider<ThreadRelinkTreeNode>, vscode.Disposable {
     }
 
     if (element.kind === "category") {
-      const label = element.provider === "cursor" ? "Cursor" : "Codex";
+      const label = PROVIDER_LABEL[element.provider] ?? "Codex";
       const item = new vscode.TreeItem(
         label,
         this.preferredCollapsibleState,
@@ -266,7 +279,7 @@ implements vscode.TreeDataProvider<ThreadRelinkTreeNode>, vscode.Disposable {
       conversationLabel(decision),
       vscode.TreeItemCollapsibleState.None,
     );
-    const providerLabel = decision.thread.provider === "cursor" ? "Cursor" : "Codex";
+    const providerLabel = PROVIDER_LABEL[decision.thread.provider] ?? "Codex";
     item.description = [
       relativeDate(decision.thread.updatedAt),
       decision.thread.archived ? "archived" : null,
@@ -350,9 +363,7 @@ implements vscode.TreeDataProvider<ThreadRelinkTreeNode>, vscode.Disposable {
     }
     if (element.kind === "category") {
       if (element.decisions.length === 0) {
-        const label = element.provider === "cursor"
-          ? "No Cursor conversations for this project."
-          : "No Codex conversations for this project.";
+        const label = `No ${PROVIDER_LABEL[element.provider] ?? "Codex"} conversations for this project.`;
         return [{
           kind: "message",
           label,

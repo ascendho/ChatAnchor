@@ -11,7 +11,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/github/license/ascendho/ThreadRelink" alt="MIT License"></a>
 </p>
 
-ThreadRelink 是一个本地 VS Code 扩展，全部操作都可以通过侧边栏、右键菜单和 VS Code 命令面板完成。项目文件夹改名或移动后，它仍然可以把原来的 Codex / Cursor Agent CLI 对话连接到这个项目。例如把 `toolspec` 改成 `finspec` 后，按路径筛选的恢复列表可能不再显示旧对话，但聊天文件实际上仍在本机。ThreadRelink 给项目分配一个不随路径变化的本地 UUID，记录新旧路径，并从新目录继续原线程（Codex：`codex resume --cd …`；Cursor：`agent --resume … --workspace …`）。
+ThreadRelink 是一个本地 VS Code 扩展，全部操作都可以通过侧边栏、右键菜单和 VS Code 命令面板完成。项目文件夹改名或移动后，它仍然可以把原来的 Codex / Cursor Agent CLI / OpenCode 对话连接到这个项目。例如把 `toolspec` 改成 `finspec` 后，按路径筛选的恢复列表可能不再显示旧对话，但聊天文件实际上仍在本机。ThreadRelink 给项目分配一个不随路径变化的本地 UUID，记录新旧路径，并从新目录继续原线程（Codex：`codex resume --cd …`；Cursor：`agent --resume … --workspace …`；OpenCode：`opencode --session …`）。
 
 ## 获取插件
 
@@ -22,11 +22,13 @@ ThreadRelink 是一个本地 VS Code 扩展，全部操作都可以通过侧边�
 
 | ThreadRelink | 具体内容 |
 | --- | --- |
-| 读取 | Codex 与 Cursor Agent CLI 列表元数据、项目身份、本地路径、Git remote 和 commit 信息；Reveal / Copy @ Path 时只解析本地会话文件路径（Codex `rollout_path` / Cursor `meta.json` 与 transcript 路径），不读消息正文 |
+| 读取 | Codex 与 Cursor Agent CLI 列表元数据、OpenCode `opencode.db` 中的会话元数据、项目身份、本地路径、Git remote 和 commit 信息；Reveal / Copy @ Path 时只解析本地会话文件路径（Codex `rollout_path` / Cursor `meta.json` 与 transcript 路径），不读消息正文 |
 | 写入 | 项目 UUID 和 `~/.threadrelink/registry.json`；按用户操作将 `@路径` 写入系统剪贴板 |
-| 绝不会 | 上传数据、提供遥测、写入 `~/.codex` 或 `~/.cursor`、修改会话数据库或 transcript、自行打开/解析消息正文（用户把路径粘贴进 Cursor 后，由 Cursor 读取文件） |
+| 绝不会 | 上传数据、提供遥测、写入 `~/.codex`、`~/.cursor` 或 OpenCode 数据库、修改会话数据库或 transcript、自行打开/解析消息正文（用户把路径粘贴进 Cursor 后，由 Cursor 读取文件） |
 
-没有明确设置项目并授权前，ThreadRelink 不会扫描对话元数据。registry version 1/2 会在下次更新时自动迁移到 version 3。写入 version 3 后，更旧的 ThreadRelink 版本可能无法继续读取，因此不建议降级。
+没有明确设置项目并授权前，ThreadRelink 不会扫描对话元数据。registry version 1/2/3 会在下次更新时自动迁移到 version 4。写入 version 4 后，更旧的 ThreadRelink 版本可能无法继续读取，因此不建议降级。
+
+> OpenCode 备注：OpenCode 的会话存在本地 `opencode.db`（SQLite），没有独立的会话文件，因此 OpenCode 会话不提供 Reveal / Copy @ Path。恢复会话（`opencode --session`）要求会话最初所在的目录仍然存在；目录已改名/移动时请使用 `opencode export <session-id>` 后在新目录 `opencode import` 手动迁移。
 
 ## 安全
 

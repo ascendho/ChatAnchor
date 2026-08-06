@@ -4,6 +4,11 @@ import { CodexAppServerClient, readCodexVersion } from "./codex.js";
 import { listCursorThreads, resolveCursorHome } from "./cursor.js";
 import { errorMessage } from "./errors.js";
 import { readGitVersion } from "./git.js";
+import {
+  listOpenCodeThreads,
+  readOpenCodeVersion,
+  resolveOpenCodeHome,
+} from "./opencode.js";
 import { RegistryStore } from "./registry.js";
 import { ThreadRelinkService } from "./service.js";
 import type {
@@ -16,6 +21,8 @@ export interface DoctorOptions {
   cwd?: string;
   codexPath?: string;
   cursorHome?: string;
+  openCodePath?: string;
+  openCodeHome?: string;
   registryHome?: string;
   legacyRegistryHome?: string;
   historyAdapterFactory?: HistoryAdapterFactory;
@@ -100,11 +107,49 @@ export async function runDoctor(
   }
 
   try {
+    const version = await readOpenCodeVersion(options.openCodePath);
+    checks.push({
+      name: "OpenCode CLI",
+      status: "pass",
+      message: version,
+    });
+  } catch (error) {
+    checks.push({
+      name: "OpenCode CLI",
+      status: "fail",
+      message: errorMessage(error),
+    });
+  }
+
+  const openCodeHome = resolveOpenCodeHome(options.openCodeHome);
+  try {
+    await access(join(openCodeHome, "opencode.db"));
+    const openCodeThreads = await listOpenCodeThreads({
+      openCodeHome,
+    });
+    checks.push({
+      name: "OpenCode data",
+      status: "pass",
+      message:
+        `${openCodeHome}; ${openCodeThreads.length} conversation(s) in the local database.`,
+    });
+  } catch (error) {
+    checks.push({
+      name: "OpenCode data",
+      status: "warn",
+      message:
+        `${openCodeHome} is not readable yet (${errorMessage(error)}). OpenCode listing will be empty until OpenCode sessions exist.`,
+    });
+  }
+
+  try {
     const probe = await new ThreadRelinkService({
       registryHome: options.registryHome,
       legacyRegistryHome: options.legacyRegistryHome,
       codexPath: options.codexPath,
       cursorHome: options.cursorHome,
+      openCodePath: options.openCodePath,
+      openCodeHome: options.openCodeHome,
       historyAdapterFactory: options.historyAdapterFactory,
     }).probeProject(options.cwd ?? process.cwd());
     checks.push({

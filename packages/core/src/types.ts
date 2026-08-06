@@ -1,6 +1,6 @@
-export const REGISTRY_SCHEMA_VERSION = 3 as const;
+export const REGISTRY_SCHEMA_VERSION = 4 as const;
 
-export type ConversationProvider = "codex" | "cursor";
+export type ConversationProvider = "codex" | "cursor" | "opencode";
 export type ProjectKind = "git" | "directory";
 export type LinkStatus = "linked" | "suggested" | "ignored" | "unlinked";
 export type LinkSource = "automatic" | "manual";

@@ -13,7 +13,8 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { afterEach, describe, expect, it } from "vitest";
+import { DatabaseSync } from "node:sqlite";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   readGitProjectId,
   removeGitProjectId,
@@ -30,8 +31,21 @@ import type {
 
 const execFileAsync = promisify(execFile);
 const cleanup: string[] = [];
+let originalOpenCodeHome: string | undefined;
+
+beforeEach(async () => {
+  originalOpenCodeHome = process.env.THREADRELINK_OPENCODE_HOME;
+  const emptyOpenCodeHome = await mkdtemp(join(tmpdir(), "threadrelink-opencode-test-"));
+  cleanup.push(emptyOpenCodeHome);
+  process.env.THREADRELINK_OPENCODE_HOME = emptyOpenCodeHome;
+});
 
 afterEach(async () => {
+  if (originalOpenCodeHome === undefined) {
+    delete process.env.THREADRELINK_OPENCODE_HOME;
+  } else {
+    process.env.THREADRELINK_OPENCODE_HOME = originalOpenCodeHome;
+  }
   await Promise.all(cleanup.splice(0).map((path) => rm(path, {
     recursive: true,
     force: true,
@@ -162,6 +176,87 @@ describe("ThreadRelinkService", () => {
         oldRoot,
         join(canonicalNewParent, "FinSpec"),
       ]));
+  });
+
+  it("merges OpenCode sessions into the sync result and links them", async () => {
+    const base = await mkdtemp(join(tmpdir(), "threadrelink-opencode-sync-"));
+    cleanup.push(base);
+    const root = join(base, "OpenSpec");
+    const registryHome = join(base, "state");
+    const openCodeHome = join(base, "opencode-home");
+    await mkdir(root);
+    await mkdir(openCodeHome);
+    await execFileAsync("git", ["init", root]);
+
+    const database = new DatabaseSync(join(openCodeHome, "opencode.db"));
+    try {
+      database.exec(`
+        CREATE TABLE project (id TEXT PRIMARY KEY, worktree TEXT NOT NULL);
+        CREATE TABLE session (
+          id TEXT PRIMARY KEY,
+          project_id TEXT,
+          parent_id TEXT,
+          directory TEXT NOT NULL,
+          title TEXT NOT NULL,
+          version TEXT NOT NULL,
+          time_created INTEGER NOT NULL,
+          time_updated INTEGER NOT NULL,
+          time_archived INTEGER
+        );
+      `);
+      database.prepare(
+        "INSERT INTO project (id, worktree) VALUES (?, ?)",
+      ).run("project-1", root);
+      database.prepare(
+        `INSERT INTO session
+           (id, project_id, parent_id, directory, title, version,
+            time_created, time_updated, time_archived)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        "ses_01",
+        "project-1",
+        null,
+        root,
+        "OpenSpec session",
+        "1.18.14",
+        1_700_000_000_000,
+        1_700_000_300_000,
+        null,
+      );
+      database.prepare(
+        `INSERT INTO session
+           (id, project_id, parent_id, directory, title, version,
+            time_created, time_updated, time_archived)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        "ses_02",
+        "project-1",
+        "ses_01",
+        root,
+        "Subagent session",
+        "1.18.14",
+        1_700_000_100_000,
+        1_700_000_200_000,
+        null,
+      );
+    } finally {
+      database.close();
+    }
+
+    const service = new ThreadRelinkService({
+      registryHome,
+      openCodeHome,
+      historyAdapterFactory: async () => adapterFor([]),
+      now: () => new Date("2026-07-29T00:00:00.000Z"),
+    });
+    await service.initProject(root);
+    const result = await service.sync(root);
+
+    expect(result.linked.map((item) => item.thread.id)).toEqual(["ses_01"]);
+    expect(result.linked[0]?.thread).toMatchObject({
+      provider: "opencode",
+      cliVersion: "1.18.14",
+    });
   });
 
   it("moves a stale automatic link when the current project has stronger evidence", async () => {

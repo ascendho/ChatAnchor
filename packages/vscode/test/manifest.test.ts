@@ -134,12 +134,12 @@ describe("VS Code extension manifest", () => {
       expect.arrayContaining([
         expect.objectContaining({
           when:
-            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\./",
+            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)$/",
           group: "inline@2",
         }),
         expect.objectContaining({
           when:
-            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\./",
+            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)$/",
           group: "manage@0",
         }),
       ]),
@@ -152,12 +152,12 @@ describe("VS Code extension manifest", () => {
       expect.arrayContaining([
         expect.objectContaining({
           when:
-            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\./",
+            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)$/",
           group: "inline@3",
         }),
         expect.objectContaining({
           when:
-            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\./",
+            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)$/",
           group: "manage@1",
         }),
       ]),
@@ -169,6 +169,12 @@ describe("VS Code extension manifest", () => {
     expect(
       manifest.contributes.configuration?.properties?.["threadrelink.agentPath"],
     ).toBeDefined();
+    expect(
+      manifest.contributes.configuration?.properties?.["threadrelink.opencodePath"],
+    ).toBeDefined();
+    expect(
+      manifest.contributes.configuration?.properties?.["threadrelink.opencodeHome"],
+    ).toBeDefined();
 
     const resumeMenus = manifest.contributes.menus["view/item/context"].filter(
       (entry) => entry.command === "threadrelink.resume",
@@ -177,7 +183,7 @@ describe("VS Code extension manifest", () => {
       expect.arrayContaining([
         expect.objectContaining({
           when:
-            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)$/",
+            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)$/",
           group: "inline@1",
         }),
       ]),

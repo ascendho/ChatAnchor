@@ -18,7 +18,10 @@ import {
   type RegistryFile,
 } from "./types.js";
 
-const ProviderSchema = z.enum(["codex", "cursor"]);
+const ProviderSchema = z.enum(["codex", "cursor", "opencode"]);
+
+/** Providers understood by registry schema v3 (before OpenCode support). */
+const LegacyProviderSchema = z.enum(["codex", "cursor"]);
 
 const GitInfoSchema = z.object({
   branch: z.string().nullable(),
@@ -108,6 +111,16 @@ const RegistryV2Schema = z.object({
   ),
 });
 
+const RegistryV3Schema = z.object({
+  schemaVersion: z.literal(3),
+  projects: z.array(ProjectSchema),
+  threads: z.array(ThreadMetadataSchema.extend({ provider: LegacyProviderSchema })),
+  threadLinks: z.array(ThreadLinkSchema.extend({ provider: LegacyProviderSchema })),
+  threadExclusions: z.array(
+    ThreadExclusionSchema.extend({ provider: LegacyProviderSchema }),
+  ),
+});
+
 const RegistrySchema = z.object({
   schemaVersion: z.literal(REGISTRY_SCHEMA_VERSION),
   projects: z.array(ProjectSchema),
@@ -120,6 +133,14 @@ function parseRegistry(value: unknown, path: string): RegistryFile {
   const current = RegistrySchema.safeParse(value);
   if (current.success) {
     return current.data;
+  }
+
+  const v3 = RegistryV3Schema.safeParse(value);
+  if (v3.success) {
+    return {
+      ...v3.data,
+      schemaVersion: REGISTRY_SCHEMA_VERSION,
+    };
   }
 
   const v2 = RegistryV2Schema.safeParse(value);
@@ -146,6 +167,7 @@ function parseRegistry(value: unknown, path: string): RegistryFile {
     && typeof value.schemaVersion === "number"
     && value.schemaVersion !== 1
     && value.schemaVersion !== 2
+    && value.schemaVersion !== 3
     && value.schemaVersion !== REGISTRY_SCHEMA_VERSION
   ) {
     throw new ThreadRelinkError(

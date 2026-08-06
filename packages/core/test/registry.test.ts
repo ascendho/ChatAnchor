@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
 import { RegistryStore } from "../src/registry.js";
+import type { ThreadMetadata } from "../src/types.js";
 
 const cleanup: string[] = [];
 
@@ -27,7 +28,7 @@ describe("RegistryStore", () => {
     const store = new RegistryStore(home);
 
     const initial = await store.read();
-    expect(initial.schemaVersion).toBe(3);
+    expect(initial.schemaVersion).toBe(4);
 
     await store.update((registry) => {
       registry.projects.push({
@@ -43,10 +44,10 @@ describe("RegistryStore", () => {
 
     expect((await store.read()).projects).toHaveLength(1);
     expect(JSON.parse(await readFile(store.registryPath, "utf8")).schemaVersion)
-      .toBe(3);
+      .toBe(4);
   });
 
-  it("normalizes a version 1 registry and persists version 3 on update", async () => {
+  it("normalizes a version 1 registry and persists version 4 on update", async () => {
     const home = await mkdtemp(join(tmpdir(), "threadrelink-registry-v1-"));
     cleanup.push(home);
     const registryPath = join(home, "registry.json");
@@ -63,7 +64,7 @@ describe("RegistryStore", () => {
     const store = new RegistryStore(home);
 
     expect(await store.read()).toMatchObject({
-      schemaVersion: 3,
+      schemaVersion: 4,
       threadExclusions: [],
     });
     expect(JSON.parse(await readFile(registryPath, "utf8")).schemaVersion)
@@ -71,12 +72,12 @@ describe("RegistryStore", () => {
 
     await store.update(() => undefined);
     expect(JSON.parse(await readFile(registryPath, "utf8"))).toMatchObject({
-      schemaVersion: 3,
+      schemaVersion: 4,
       threadExclusions: [],
     });
   });
 
-  it("normalizes a version 2 registry and persists version 3 on update", async () => {
+  it("normalizes a version 2 registry and persists version 4 on update", async () => {
     const home = await mkdtemp(join(tmpdir(), "threadrelink-registry-v2-"));
     cleanup.push(home);
     const registryPath = join(home, "registry.json");
@@ -94,13 +95,54 @@ describe("RegistryStore", () => {
     const store = new RegistryStore(home);
 
     expect(await store.read()).toMatchObject({
-      schemaVersion: 3,
+      schemaVersion: 4,
       threadExclusions: [],
     });
 
     await store.update(() => undefined);
     expect(JSON.parse(await readFile(registryPath, "utf8")).schemaVersion)
-      .toBe(3);
+      .toBe(4);
+  });
+
+  it("normalizes a version 3 registry and persists version 4 on update", async () => {
+    const home = await mkdtemp(join(tmpdir(), "threadrelink-registry-v3-"));
+    cleanup.push(home);
+    const registryPath = join(home, "registry.json");
+    await writeFile(
+      registryPath,
+      `${JSON.stringify({
+        schemaVersion: 3,
+        projects: [],
+        threads: [
+          {
+            provider: "cursor",
+            id: "chat-1",
+            name: "Cursor chat",
+            preview: "Cursor chat",
+            cwd: "/work/cursor",
+            createdAt: 1_700_000_000,
+            updatedAt: 1_700_000_100,
+            archived: false,
+            cliVersion: "",
+            modelProvider: "cursor",
+            gitInfo: null,
+          },
+        ],
+        threadLinks: [],
+        threadExclusions: [],
+      })}\n`,
+      "utf8",
+    );
+    const store = new RegistryStore(home);
+
+    expect(await store.read()).toMatchObject({
+      schemaVersion: 4,
+      threads: [{ provider: "cursor", id: "chat-1" }],
+    });
+
+    await store.update(() => undefined);
+    expect(JSON.parse(await readFile(registryPath, "utf8")).schemaVersion)
+      .toBe(4);
   });
 
   it("rejects registries created by an unsupported future version", async () => {
@@ -196,5 +238,46 @@ describe("RegistryStore", () => {
     await expect(access(store.registryPath)).rejects.toMatchObject({
       code: "ENOENT",
     });
+  });
+
+  it("round-trips OpenCode threads and links in a version 4 registry", async () => {
+    const home = await mkdtemp(join(tmpdir(), "threadrelink-registry-opencode-"));
+    cleanup.push(home);
+    const store = new RegistryStore(home);
+    const thread: ThreadMetadata = {
+      provider: "opencode",
+      id: "ses_02a00000000000000000000000",
+      name: "OpenCode session",
+      preview: "OpenCode session",
+      cwd: "/work/opencode",
+      createdAt: 1_700_000_000,
+      updatedAt: 1_700_000_200,
+      archived: false,
+      cliVersion: "1.18.14",
+      modelProvider: "opencode",
+      gitInfo: null,
+    };
+
+    await store.update((registry) => {
+      registry.threads.push(thread);
+      registry.threadLinks.push({
+        provider: "opencode",
+        threadId: thread.id,
+        projectId: "project-1",
+        linkedBy: "manual",
+        originalCwd: "/work/opencode",
+        relativeCwd: null,
+        evidence: [],
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      });
+    });
+
+    const registry = await store.read();
+    expect(registry.threads[0]).toMatchObject({
+      provider: "opencode",
+      id: thread.id,
+    });
+    expect(registry.threadLinks[0]?.provider).toBe("opencode");
   });
 });
