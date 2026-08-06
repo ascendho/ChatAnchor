@@ -2,7 +2,7 @@
   "name": "threadrelink",
   "displayName": "ThreadRelink",
   "description": "A VS Code extension that keeps local Codex conversations connected to their projects after repositories are renamed or moved.",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "icon": "resources/threadrelink.png",
   "publisher": "ascendho",
   "repository": {
@@ -14,7 +14,7 @@
   "bugs": {
     "url": "https://github.com/ascendho/ThreadRelink/issues"
   },
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "pricing": "Free",
   "galleryBanner": {
     "color": "#315EF3",

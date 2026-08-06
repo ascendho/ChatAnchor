@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.1
+
+- Relicense the project from MIT to GPL-3.0.
+
 ## 0.6.0
 
 - Add OpenCode conversation discovery from the local `opencode.db` (list,

@@ -1,9 +1,9 @@
 {
   "name": "threadrelink-monorepo",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "description": "Path-independent discovery and recovery for local Codex conversations.",
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "repository": {
     "type": "git",
     "url": "https://github.com/ascendho/ThreadRelink.git"
