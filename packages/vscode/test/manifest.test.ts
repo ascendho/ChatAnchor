@@ -61,7 +61,7 @@ describe("VS Code extension manifest", () => {
     expect(manifest.publisher).toBe("ascendho");
     expect(manifest.displayName).toBe("ChatAnchor");
     expect(manifest.description).toBe(
-      "A VS Code extension that keeps local Codex conversations connected to their projects after repositories are renamed or moved.",
+      "A VS Code extension that keeps AI coding agent conversations connected to their projects after folders are renamed or moved.",
     );
     expect(manifest.version).toMatch(/^\d+\.\d+\.\d+$/);
     expect(manifest.pricing).toBe("Free");

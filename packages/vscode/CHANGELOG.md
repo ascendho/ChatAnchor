@@ -1,10 +1,14 @@
 # Changelog
 
-## Unreleased
+## 1.0.0
 
 - Rename the extension display name to **ChatAnchor** (formerly ThreadRelink).
   The Marketplace extension ID remains `ascendho.threadrelink`, and command
   and setting prefixes remain `threadrelink.*`.
+- New ChatAnchor extension icon and activity bar artwork.
+- Rework the Marketplace and repository READMEs (features, quick start,
+  privacy, roadmap) with repository cover artwork; English is the Marketplace
+  README, and Chinese remains the repository primary README.
 
 ## 0.6.1
 

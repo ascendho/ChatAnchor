@@ -1,9 +1,11 @@
 # Changelog
 
-## Unreleased
+## 1.0.0
 
 - Rename the extension display name to **ChatAnchor** (formerly ThreadRelink);
   the Marketplace extension ID and command/setting prefixes stay unchanged.
+- New extension icon, activity bar artwork, and repository cover artwork;
+  reworked READMEs in Chinese and English.
 
 ## 0.6.1
 
