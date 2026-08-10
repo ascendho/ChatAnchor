@@ -1,6 +1,6 @@
 # ThreadRelink
 
-> 中文：[README.md](https://github.com/ascendho/ThreadRelink/blob/main/README.md)
+> 中文：[README.md](README.md)
 
 [![CI](https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml/badge.svg?style=flat-square)](https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/ascendho/ThreadRelink?style=flat-square&label=Release)](https://github.com/ascendho/ThreadRelink/releases/latest)

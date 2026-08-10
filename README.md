@@ -1,5 +1,7 @@
 # ThreadRelink
 
+> English: [README_EN.md](README_EN.md)
+
 [![CI](https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml/badge.svg?style=flat-square)](https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/ascendho/ThreadRelink?style=flat-square&label=Release)](https://github.com/ascendho/ThreadRelink/releases/latest)
 [![License](https://img.shields.io/github/license/ascendho/ThreadRelink?style=flat-square&label=License)](LICENSE)
@@ -14,6 +16,8 @@ ThreadRelink 是一个本地 VS Code 扩展：项目文件夹改名或移动后�
 - Copy @ Path / Reveal 会话文件（Codex、Cursor）
 - Find Old Conversations 找回历史会话；支持移除、移动、忽略和恢复链接
 - 完全本地运行、无遥测、不上传任何数据
+
+> **OpenCode** 会话没有独立文件（存在本地 `opencode.db` 中），因此不提供 Reveal / Copy @ Path；恢复会话需要原目录仍然存在，改名/移动时请用 `opencode export <id>` 后在新目录 `opencode import` 迁移。
 
 ## 快速开始
 
@@ -43,8 +47,6 @@ ThreadRelink 是一个本地 VS Code 扩展：项目文件夹改名或移动后�
 ## 本地数据与隐私
 
 ThreadRelink 完全在本机运行：只读取会话元数据（标题、时间、工作目录、Git 信息等），不读取消息正文，不上传任何数据，也不提供遥测。只有在显式设置项目并授权后才会扫描。
-
-> **OpenCode** 会话没有独立文件（存在本地 `opencode.db` 中），因此不提供 Reveal / Copy @ Path；恢复会话需要原目录仍然存在，改名/移动时请用 `opencode export <id>` 后在新目录 `opencode import` 迁移。
 
 ## 未来规划
 
