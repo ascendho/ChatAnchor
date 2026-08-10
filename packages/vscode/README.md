@@ -1,12 +1,14 @@
-# ThreadRelink
+# ChatAnchor
 
-> 中文：[README.md](https://github.com/ascendho/ThreadRelink/blob/main/README.md)
+> 中文：[README.md](https://github.com/ascendho/ChatAnchor/blob/main/README.md)
 
-[![CI](https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml/badge.svg?style=flat-square)](https://github.com/ascendho/ThreadRelink/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/ascendho/ThreadRelink?style=flat-square&label=Release)](https://github.com/ascendho/ThreadRelink/releases/latest)
-[![License](https://img.shields.io/github/license/ascendho/ThreadRelink?style=flat-square&label=License)](LICENSE)
+[![CI](https://github.com/ascendho/ChatAnchor/actions/workflows/ci.yml/badge.svg?style=flat-square)](https://github.com/ascendho/ChatAnchor/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/ascendho/ChatAnchor?style=flat-square&label=Release)](https://github.com/ascendho/ChatAnchor/releases/latest)
+[![License](https://img.shields.io/github/license/ascendho/ChatAnchor?style=flat-square&label=License)](LICENSE)
 
-ThreadRelink is a local VS Code extension: after a project folder is renamed or moved, it reconnects your original **Codex**, **Cursor Agent CLI**, and **OpenCode** conversations to that project and resumes the original thread from the new location. The project gets a path-independent local UUID, so old conversations do not "disappear" just because of a rename.
+ChatAnchor is a local VS Code extension: after a project folder is renamed or moved, it reconnects your original **Codex**, **Cursor Agent CLI**, and **OpenCode** conversations to that project and resumes the original thread from the new location. The project gets a path-independent local UUID, so old conversations do not "disappear" just because of a rename.
+
+> Name note: this extension was formerly **ThreadRelink** and is now **ChatAnchor**. Marketplace extension IDs cannot change after publishing, so the Marketplace URL and extension ID remain `ascendho.threadrelink`, and command/setting prefixes remain `threadrelink.*`.
 
 ## Features
 
@@ -22,19 +24,19 @@ ThreadRelink is a local VS Code extension: after a project folder is renamed or 
 ## Getting started
 
 > [!NOTE]
-> ThreadRelink only reads local metadata. It never uploads data and never reads message bodies. Before first use, you must explicitly grant consent and set up each project.
+> ChatAnchor only reads local metadata. It never uploads data and never reads message bodies. Before first use, you must explicitly grant consent and set up each project.
 
 1. **Install the extension**
    - Install from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink), or run:
      ```bash
      code --install-extension ascendho.threadrelink
      ```
-   - Or download the latest VSIX from [GitHub Releases](https://github.com/ascendho/ThreadRelink/releases/latest) and run:
+   - Or download the latest VSIX from [GitHub Releases](https://github.com/ascendho/ChatAnchor/releases/latest) and run:
      ```bash
      code --install-extension threadrelink.vsix
      ```
 
-2. **Open the ThreadRelink view**: click the ThreadRelink icon in the Activity Bar; if it is hidden, right-click the Activity Bar and enable **ThreadRelink**.
+2. **Open the ChatAnchor view**: click the ChatAnchor icon in the Activity Bar; if it is hidden, right-click the Activity Bar and enable **ChatAnchor**.
 
 3. **Enable metadata scan**: click "Enable Local Metadata Scan" to allow reading local **Codex** / **Cursor** / **OpenCode** conversation metadata. Projects are never scanned without explicit consent.
 
@@ -42,24 +44,24 @@ ThreadRelink is a local VS Code extension: after a project folder is renamed or 
 
 5. **Rename and reopen the folder**: close the Codex terminal, rename the folder outside VS Code, reopen it, then click "Refresh Conversations".
 
-6. **Resume the original conversation**: hover a conversation row and click the continue icon. ThreadRelink opens an integrated terminal running `codex resume --cd <new-path> <thread-id>`, `agent --resume <chat-id> --workspace <new-path>`, or `opencode --session <id>` at the new path.
+6. **Resume the original conversation**: hover a conversation row and click the continue icon. ChatAnchor opens an integrated terminal running `codex resume --cd <new-path> <thread-id>`, `agent --resume <chat-id> --workspace <new-path>`, or `opencode --session <id>` at the new path.
 
 ## Local data and privacy
 
-ThreadRelink runs entirely on your machine: it only reads conversation metadata (title, timestamps, working directory, Git info), never reads message bodies, uploads nothing, and has no telemetry. Scanning only happens after you explicitly set up a project and grant consent.
+ChatAnchor runs entirely on your machine: it only reads conversation metadata (title, timestamps, working directory, Git info), never reads message bodies, uploads nothing, and has no telemetry. Scanning only happens after you explicitly set up a project and grant consent.
 
 ## Roadmap
 
-ThreadRelink currently runs fully locally and uploads nothing. Cross-device conversation history sync (for example via a private sync folder or a self-hosted backend) is not implemented yet, but it is under consideration.
+ChatAnchor currently runs fully locally and uploads nothing. Cross-device conversation history sync (for example via a private sync folder or a self-hosted backend) is not implemented yet, but it is under consideration.
 
 ## Reporting bugs
 
-Feedback is welcome. File reproducible bugs or feature requests in [GitHub Issues](https://github.com/ascendho/ThreadRelink/issues) — please search existing issues first. For security issues, use [GitHub private vulnerability reporting](https://github.com/ascendho/ThreadRelink/security/advisories/new) instead of a public issue.
+Feedback is welcome. File reproducible bugs or feature requests in [GitHub Issues](https://github.com/ascendho/ChatAnchor/issues) — please search existing issues first. For security issues, use [GitHub private vulnerability reporting](https://github.com/ascendho/ChatAnchor/security/advisories/new) instead of a public issue.
 
 ## Feedback and contributing
 
 Issues and pull requests are welcome:
 
 - Contributions adding support for other coding agents (such as **Claude Code**, **Gemini CLI**, **GitHub Copilot**) are welcome; see the existing provider adapters in `packages/core/src/`;
-- Remove absolute paths from screenshots and diagnostics; never upload ThreadRelink registry files, Codex transcripts, or unredacted local paths;
+- Remove absolute paths from screenshots and diagnostics; never upload ChatAnchor registry files, Codex transcripts, or unredacted local paths;
 - Keep pull requests focused, describe the user impact, update tests or docs, and run `pnpm check` before submitting.

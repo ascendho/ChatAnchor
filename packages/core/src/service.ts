@@ -433,7 +433,7 @@ export class ThreadRelinkService {
         : " Set up this project first.";
       throw new ThreadRelinkError(
         "PROJECT_NOT_INITIALIZED",
-        `ThreadRelink is not enabled for ${probe.workspacePath}.${detail}`,
+        `ChatAnchor is not enabled for ${probe.workspacePath}.${detail}`,
       );
     }
 
@@ -449,7 +449,7 @@ export class ThreadRelinkService {
       if (context.projectId !== probe.projectId) {
         throw new ThreadRelinkError(
           "PROJECT_IDENTITY_CONFLICT",
-          "The Git project ID no longer matches the ThreadRelink registry.",
+          "The Git project ID no longer matches the ChatAnchor registry.",
         );
       }
     } else {
@@ -795,7 +795,7 @@ export class ThreadRelinkService {
     if (!project) {
       throw new ThreadRelinkError(
         "PROJECT_NOT_FOUND",
-        `ThreadRelink project not found: ${projectId}`,
+        `ChatAnchor project not found: ${projectId}`,
       );
     }
 
@@ -881,7 +881,7 @@ export class ThreadRelinkService {
     if (!registry.projects.some((candidate) => candidate.id === projectId)) {
       throw new ThreadRelinkError(
         "PROJECT_NOT_FOUND",
-        `ThreadRelink project not found: ${projectId}`,
+        `ChatAnchor project not found: ${projectId}`,
       );
     }
     const previous = registry.threadLinks.find((candidate) =>
@@ -1041,7 +1041,7 @@ export class ThreadRelinkService {
     if (!project) {
       throw new ThreadRelinkError(
         "PROJECT_NOT_FOUND",
-        `ThreadRelink project not found: ${projectId}`,
+        `ChatAnchor project not found: ${projectId}`,
       );
     }
     const identityPaths = new Set<string>();

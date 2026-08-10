@@ -120,7 +120,7 @@ async function chooseWorkspaceFolder(
   const folders = vscode.workspace.workspaceFolders ?? [];
   if (folders.length === 0) {
     void vscode.window.showWarningMessage(
-      "ThreadRelink needs an open workspace folder.",
+      "ChatAnchor needs an open workspace folder.",
     );
     return undefined;
   }
@@ -189,7 +189,7 @@ export async function activate(
   context: vscode.ExtensionContext,
 ): Promise<void> {
   const provider = new ThreadRelinkTreeProvider(context.extensionUri);
-  const output = vscode.window.createOutputChannel("ThreadRelink");
+  const output = vscode.window.createOutputChannel("ChatAnchor");
   const view = vscode.window.createTreeView("threadrelink.conversations", {
     treeDataProvider: provider,
     showCollapseAll: false,
@@ -266,11 +266,11 @@ export async function activate(
       return true;
     }
     const choice = await vscode.window.showInformationMessage(
-      "ThreadRelink reads local Codex and Cursor Agent CLI conversation metadata (thread ID, title, cwd, timestamps, and Git info). It does not copy message bodies or upload data.",
+      "ChatAnchor reads local Codex, Cursor Agent CLI, and OpenCode conversation metadata (thread ID, title, cwd, timestamps, and Git info). It does not copy message bodies or upload data.",
       { modal: true },
-      "Enable ThreadRelink",
+      "Enable ChatAnchor",
     );
-    if (choice !== "Enable ThreadRelink") {
+    if (choice !== "Enable ChatAnchor") {
       return false;
     }
     await context.globalState.update(CONSENT_KEY, true);
@@ -307,7 +307,7 @@ export async function activate(
     if (!vscode.workspace.isTrusted) {
       provider.setWorkspaces([]);
       void vscode.window.showWarningMessage(
-        "Trust this workspace before ThreadRelink can start Codex.",
+        "Trust this workspace before ChatAnchor can start Codex.",
       );
       return;
     }
@@ -337,7 +337,7 @@ export async function activate(
           output.appendLine("");
           output.appendLine(formatRelocationReport(report));
           void vscode.window.showInformationMessage(
-            `ThreadRelink detected a new location for ${report.projectName} and reconnected ${report.linkedThreads} conversation${report.linkedThreads === 1 ? "" : "s"}.`,
+            `ChatAnchor detected a new location for ${report.projectName} and reconnected ${report.linkedThreads} conversation${report.linkedThreads === 1 ? "" : "s"}.`,
             "View Report",
           ).then((choice) => {
             if (choice === "View Report") {
@@ -357,7 +357,7 @@ export async function activate(
   const setupWorkspace = async (requestedPath?: string): Promise<void> => {
     if (!vscode.workspace.isTrusted) {
       void vscode.window.showWarningMessage(
-        "Trust this workspace before setting up ThreadRelink.",
+        "Trust this workspace before setting up ChatAnchor.",
       );
       return;
     }
@@ -407,11 +407,11 @@ export async function activate(
 
       const project = await service.setupProject(folder.uri.fsPath, mode);
       void vscode.window.showInformationMessage(
-        `ThreadRelink set up ${project.name}. Project ID: ${project.id}`,
+        `ChatAnchor set up ${project.name}. Project ID: ${project.id}`,
       );
       await refresh(false);
     } catch (error) {
-      void vscode.window.showErrorMessage(`ThreadRelink: ${errorMessage(error)}`);
+      void vscode.window.showErrorMessage(`ChatAnchor: ${errorMessage(error)}`);
     }
   };
 
@@ -420,7 +420,7 @@ export async function activate(
     workspacePath: string,
   ): Promise<void> => {
     const choice = await vscode.window.showWarningMessage(
-      `Link “${conversationLabel(decision)}” to this project? This changes only ThreadRelink's local registry.`,
+      `Link “${conversationLabel(decision)}” to this project? This changes only ChatAnchor's local registry.`,
       { modal: true },
       "Link conversation",
     );
@@ -534,7 +534,7 @@ export async function activate(
         await confirmRecoveryLink(allSelected.decision, folder.uri.fsPath);
       }
     } catch (error) {
-      void vscode.window.showErrorMessage(`ThreadRelink: ${errorMessage(error)}`);
+      void vscode.window.showErrorMessage(`ChatAnchor: ${errorMessage(error)}`);
     }
   };
 
@@ -554,7 +554,7 @@ export async function activate(
           };
         }));
         const selected = await vscode.window.showQuickPick(choices, {
-          placeHolder: "Choose a ThreadRelink project to forget",
+          placeHolder: "Choose a ChatAnchor project to forget",
           matchOnDetail: true,
         });
         projectId = selected?.projectId;
@@ -570,7 +570,7 @@ export async function activate(
       );
       const root = preview.project.aliases.at(-1)?.path ?? preview.project.name;
       const choice = await vscode.window.showWarningMessage(
-        `Forget ThreadRelink project “${preview.project.name}” at ${root}? ${preview.linkedThreads} ThreadRelink link(s) and matching local identities will be removed. Codex conversations and transcripts will not be deleted.`,
+        `Forget ChatAnchor project “${preview.project.name}” at ${root}? ${preview.linkedThreads} ChatAnchor link(s) and matching local identities will be removed. Codex conversations and transcripts will not be deleted.`,
         { modal: true },
         "Forget project",
       );
@@ -579,11 +579,11 @@ export async function activate(
       }
       const result = await service.forgetProject(projectId, workspacePaths);
       void vscode.window.showInformationMessage(
-        `Forgot ${preview.project.name}: removed ${result.removedLinks} ThreadRelink link(s). No Codex conversations were deleted.`,
+        `Forgot ${preview.project.name}: removed ${result.removedLinks} ChatAnchor link(s). No Codex conversations were deleted.`,
       );
       await refresh(false);
     } catch (error) {
-      void vscode.window.showErrorMessage(`ThreadRelink: ${errorMessage(error)}`);
+      void vscode.window.showErrorMessage(`ChatAnchor: ${errorMessage(error)}`);
     }
   };
 
@@ -601,7 +601,7 @@ export async function activate(
     }
     const label = conversationLabel(node.decision);
     const choice = await vscode.window.showWarningMessage(
-      `Remove “${label}” from this project and ignore future automatic matches? This changes only ThreadRelink's local registry.`,
+      `Remove “${label}” from this project and ignore future automatic matches? This changes only ChatAnchor's local registry.`,
       { modal: true },
       "Remove link",
     );
@@ -619,7 +619,7 @@ export async function activate(
       );
       await refresh(false);
     } catch (error) {
-      void vscode.window.showErrorMessage(`ThreadRelink: ${errorMessage(error)}`);
+      void vscode.window.showErrorMessage(`ChatAnchor: ${errorMessage(error)}`);
     }
   };
 
@@ -642,7 +642,7 @@ export async function activate(
       );
       if (projects.length === 0) {
         void vscode.window.showInformationMessage(
-          "Set up another ThreadRelink project before moving this conversation.",
+          "Set up another ChatAnchor project before moving this conversation.",
         );
         return;
       }
@@ -693,7 +693,7 @@ export async function activate(
       );
       await refresh(false);
     } catch (error) {
-      void vscode.window.showErrorMessage(`ThreadRelink: ${errorMessage(error)}`);
+      void vscode.window.showErrorMessage(`ChatAnchor: ${errorMessage(error)}`);
     }
   };
 
@@ -719,7 +719,7 @@ export async function activate(
         [workspace.path],
       );
       void vscode.window.showWarningMessage(
-        `ThreadRelink found a legacy parent project at ${probe.gitRoot} with ${preview.linkedThreads} linked conversation(s). This workspace will not use it unless you explicitly choose the parent repository.`,
+        `ChatAnchor found a legacy parent project at ${probe.gitRoot} with ${preview.linkedThreads} linked conversation(s). This workspace will not use it unless you explicitly choose the parent repository.`,
         "Review project",
         "Use parent repository",
       ).then(async (choice) => {
@@ -831,7 +831,7 @@ export async function activate(
             const executable = resolveExecutablePath(settings.agentPath);
             if (!executable) {
               void vscode.window.showErrorMessage(
-                `ThreadRelink: Could not find the "${settings.agentPath}" executable on PATH. Set "threadrelink.agentPath" to its absolute path.`,
+                `ChatAnchor: Could not find the "${settings.agentPath}" executable on PATH. Set "threadrelink.agentPath" to its absolute path.`,
               );
               return;
             }
@@ -850,14 +850,14 @@ export async function activate(
               || await access(sessionDirectory).then(() => true).catch(() => false) === false
             ) {
               void vscode.window.showErrorMessage(
-                `ThreadRelink: OpenCode cannot resume this session because its original directory (${sessionDirectory ?? selected.decision.thread.cwd}) no longer exists after the move. OpenCode requires the original session directory to resume a session; use "opencode export <session-id>" then "opencode import" from the new path to relocate it.`,
+                `ChatAnchor: OpenCode cannot resume this session because its original directory (${sessionDirectory ?? selected.decision.thread.cwd}) no longer exists after the move. OpenCode requires the original session directory to resume a session; use "opencode export <session-id>" then "opencode import" from the new path to relocate it.`,
               );
               return;
             }
             const openCodeExecutable = resolveExecutablePath(settings.openCodePath);
             if (!openCodeExecutable) {
               void vscode.window.showErrorMessage(
-                `ThreadRelink: Could not find the "${settings.openCodePath}" executable on PATH. Set "threadrelink.opencodePath" to its absolute path.`,
+                `ChatAnchor: Could not find the "${settings.openCodePath}" executable on PATH. Set "threadrelink.opencodePath" to its absolute path.`,
               );
               return;
             }
@@ -867,7 +867,7 @@ export async function activate(
             const executable = resolveExecutablePath(settings.codexPath);
             if (!executable) {
               void vscode.window.showErrorMessage(
-                `ThreadRelink: Could not find the "${settings.codexPath}" executable on PATH. Set "threadrelink.codexPath" to its absolute path.`,
+                `ChatAnchor: Could not find the "${settings.codexPath}" executable on PATH. Set "threadrelink.codexPath" to its absolute path.`,
               );
               return;
             }
@@ -880,7 +880,7 @@ export async function activate(
             ];
           }
           const terminal = vscode.window.createTerminal({
-            name: `ThreadRelink: ${conversationLabel(selected.decision)}`,
+            name: `ChatAnchor: ${conversationLabel(selected.decision)}`,
             shellPath,
             shellArgs,
             cwd: target.path,
@@ -889,7 +889,7 @@ export async function activate(
           terminal.show();
         } catch (error) {
           void vscode.window.showErrorMessage(
-            `ThreadRelink: ${errorMessage(error)}`,
+            `ChatAnchor: ${errorMessage(error)}`,
           );
         }
       },
@@ -927,7 +927,7 @@ export async function activate(
           }
         } catch (error) {
           void vscode.window.showErrorMessage(
-            `ThreadRelink: ${errorMessage(error)}`,
+            `ChatAnchor: ${errorMessage(error)}`,
           );
         }
       },
@@ -957,7 +957,7 @@ export async function activate(
           );
         } catch (error) {
           void vscode.window.showErrorMessage(
-            `ThreadRelink: ${errorMessage(error)}`,
+            `ChatAnchor: ${errorMessage(error)}`,
           );
         }
       },
@@ -985,11 +985,11 @@ export async function activate(
         await service.sync(folder.uri.fsPath);
         const result = await service.relink(oldPath, folder.uri.fsPath);
         void vscode.window.showInformationMessage(
-          `ThreadRelink linked ${result.linkedThreads} conversation(s) from the old path.`,
+          `ChatAnchor linked ${result.linkedThreads} conversation(s) from the old path.`,
         );
         await refresh(false);
       } catch (error) {
-        void vscode.window.showErrorMessage(`ThreadRelink: ${errorMessage(error)}`);
+        void vscode.window.showErrorMessage(`ChatAnchor: ${errorMessage(error)}`);
       }
     }),
     vscode.commands.registerCommand("threadrelink.doctor", async () => {
@@ -1016,8 +1016,8 @@ export async function activate(
       output.show(true);
       void vscode.window.showInformationMessage(
         report.ok
-          ? "ThreadRelink diagnostics passed."
-          : "ThreadRelink found problems. See the ThreadRelink output.",
+          ? "ChatAnchor diagnostics passed."
+          : "ChatAnchor found problems. See the ChatAnchor output.",
       );
     }),
     vscode.workspace.onDidChangeWorkspaceFolders(async () => {
@@ -1073,7 +1073,7 @@ export async function activate(
   if (!context.globalState.get<boolean>(ONBOARDING_SHOWN_KEY, false)) {
     await context.globalState.update(ONBOARDING_SHOWN_KEY, true);
     void vscode.window.showInformationMessage(
-      "ThreadRelink is ready. Set up each project explicitly to keep its local Codex and Cursor conversations discoverable after a rename.",
+      "ChatAnchor is ready. Set up each project explicitly to keep its local Codex, Cursor, and OpenCode conversations discoverable after a rename.",
       "Open Getting Started",
     ).then(async (choice) => {
       if (choice === "Open Getting Started") {

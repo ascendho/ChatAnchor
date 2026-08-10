@@ -1,18 +1,18 @@
 {
   "name": "threadrelink",
-  "displayName": "ThreadRelink",
+  "displayName": "ChatAnchor",
   "description": "A VS Code extension that keeps local Codex conversations connected to their projects after repositories are renamed or moved.",
   "version": "0.6.1",
   "icon": "resources/threadrelink.png",
   "publisher": "ascendho",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ascendho/ThreadRelink.git",
+    "url": "https://github.com/ascendho/ChatAnchor.git",
     "directory": "packages/vscode"
   },
-  "homepage": "https://github.com/ascendho/ThreadRelink#readme",
+  "homepage": "https://github.com/ascendho/ChatAnchor#readme",
   "bugs": {
-    "url": "https://github.com/ascendho/ThreadRelink/issues"
+    "url": "https://github.com/ascendho/ChatAnchor/issues"
   },
   "license": "GPL-3.0-only",
   "pricing": "Free",
@@ -26,7 +26,8 @@
   "categories": [
     "Other"
   ],
-  "keywords": [
+    "keywords": [
+    "chatanchor",
     "codex",
     "conversation",
     "history",
@@ -41,94 +42,94 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": false,
-      "description": "ThreadRelink starts a local Codex process and reads local conversation metadata."
+      "description": "ChatAnchor starts a local Codex process and reads local conversation metadata."
     }
   },
   "contributes": {
     "commands": [
       {
         "command": "threadrelink.enable",
-        "title": "ThreadRelink: Enable Local Metadata Scan",
+        "title": "ChatAnchor: Enable Local Metadata Scan",
         "icon": "$(shield)"
       },
       {
         "command": "threadrelink.openGettingStarted",
-        "title": "ThreadRelink: Open Getting Started",
+        "title": "ChatAnchor: Open Getting Started",
         "icon": "$(book)"
       },
       {
         "command": "threadrelink.openView",
-        "title": "ThreadRelink: Open Conversations View",
+        "title": "ChatAnchor: Open Conversations View",
         "icon": "$(comment-discussion)"
       },
       {
         "command": "threadrelink.initialize",
-        "title": "ThreadRelink: Set Up This Project",
+        "title": "ChatAnchor: Set Up This Project",
         "icon": "$(key)"
       },
       {
         "command": "threadrelink.findOldConversations",
-        "title": "ThreadRelink: Find Old Conversations",
+        "title": "ChatAnchor: Find Old Conversations",
         "icon": "$(search)"
       },
       {
         "command": "threadrelink.collapseTree",
-        "title": "ThreadRelink: Collapse Conversations",
+        "title": "ChatAnchor: Collapse Conversations",
         "icon": "$(collapse-all)"
       },
       {
         "command": "threadrelink.expandTree",
-        "title": "ThreadRelink: Expand Conversations",
+        "title": "ChatAnchor: Expand Conversations",
         "icon": "$(expand-all)"
       },
       {
         "command": "threadrelink.forgetProject",
-        "title": "ThreadRelink: Forget Project",
+        "title": "ChatAnchor: Forget Project",
         "icon": "$(trash)"
       },
       {
         "command": "threadrelink.refresh",
-        "title": "ThreadRelink: Refresh Conversations",
+        "title": "ChatAnchor: Refresh Conversations",
         "icon": "$(refresh)"
       },
       {
         "command": "threadrelink.confirmLink",
-        "title": "ThreadRelink: Link Conversation to This Project",
+        "title": "ChatAnchor: Link Conversation to This Project",
         "icon": "$(link)"
       },
       {
         "command": "threadrelink.unlink",
-        "title": "ThreadRelink: Remove Conversation from This Project",
+        "title": "ChatAnchor: Remove Conversation from This Project",
         "icon": "$(remove-close)"
       },
       {
         "command": "threadrelink.move",
-        "title": "ThreadRelink: Move Conversation to Another Project",
+        "title": "ChatAnchor: Move Conversation to Another Project",
         "icon": "$(arrow-swap)"
       },
       {
         "command": "threadrelink.resume",
-        "title": "ThreadRelink: Resume Conversation Here",
+        "title": "ChatAnchor: Resume Conversation Here",
         "icon": "$(debug-continue)"
       },
       {
         "command": "threadrelink.copyAtPath",
-        "title": "ThreadRelink: Copy @ Conversation Path",
+        "title": "ChatAnchor: Copy @ Conversation Path",
         "icon": "$(mention)"
       },
       {
         "command": "threadrelink.revealLocation",
-        "title": "ThreadRelink: Reveal Conversation File",
+        "title": "ChatAnchor: Reveal Conversation File",
         "icon": "$(folder-opened)"
       },
       {
         "command": "threadrelink.relink",
-        "title": "ThreadRelink: Relink Previous Project Path",
+        "title": "ChatAnchor: Relink Previous Project Path",
         "icon": "$(folder-symlink)"
       },
       {
         "command": "threadrelink.doctor",
-        "title": "ThreadRelink: Run Diagnostics",
+        "title": "ChatAnchor: Run Diagnostics",
         "icon": "$(stethoscope)"
       }
     ],
@@ -136,7 +137,7 @@
       "activitybar": [
         {
           "id": "threadrelink",
-          "title": "ThreadRelink",
+          "title": "ChatAnchor",
           "icon": "resources/threadrelink.svg"
         }
       ]
@@ -152,7 +153,7 @@
     "viewsWelcome": [
       {
         "view": "threadrelink.conversations",
-        "contents": "Open a project folder to use ThreadRelink.\n[Open Getting Started](command:threadrelink.openGettingStarted)",
+        "contents": "Open a project folder to use ChatAnchor.\n[Open Getting Started](command:threadrelink.openGettingStarted)",
         "when": "workspaceFolderCount == 0"
       }
     ],
@@ -164,11 +165,11 @@
         "steps": [
           {
             "id": "threadrelink.gettingStarted.openView",
-            "title": "Find ThreadRelink",
-            "description": "Open the ThreadRelink icon in the Activity Bar. If it is hidden, right-click the Activity Bar and enable **ThreadRelink**.\n[Open ThreadRelink](command:threadrelink.openView)",
+            "title": "Find ChatAnchor",
+            "description": "Open the ChatAnchor icon in the Activity Bar. If it is hidden, right-click the Activity Bar and enable **ChatAnchor**.\n[Open ChatAnchor](command:threadrelink.openView)",
             "media": {
               "image": "media/guide/02-find-threadrelink.png",
-              "altText": "ThreadRelink icon highlighted in the VS Code Activity Bar"
+              "altText": "ChatAnchor icon highlighted in the VS Code Activity Bar"
             },
             "completionEvents": [
               "onCommand:threadrelink.openView"
@@ -180,7 +181,7 @@
             "description": "Allow metadata access once for this VS Code profile. New projects are never scanned until you explicitly set them up.\n[Enable metadata scan](command:threadrelink.enable)",
             "media": {
               "image": "media/guide/03-enable-and-initialize.png",
-              "altText": "ThreadRelink setup action before a project is scanned"
+              "altText": "ChatAnchor setup action before a project is scanned"
             },
             "completionEvents": [
               "onCommand:threadrelink.enable"
@@ -192,7 +193,7 @@
             "description": "Store a stable local project ID before renaming or moving the folder. A folder inside a parent Git repository always asks you to choose its boundary.\n[Set Up This Project](command:threadrelink.initialize)",
             "media": {
               "image": "media/guide/03-enable-and-initialize.png",
-              "altText": "Set Up This Project action in the ThreadRelink view"
+              "altText": "Set Up This Project action in the ChatAnchor view"
             },
             "completionEvents": [
               "onCommand:threadrelink.initialize"
@@ -201,7 +202,7 @@
           {
             "id": "threadrelink.gettingStarted.reopen",
             "title": "Rename and reopen the folder",
-            "description": "Close the Codex terminal, rename the folder outside VS Code, reopen the new path, then refresh ThreadRelink.\n[Refresh conversations](command:threadrelink.refresh)",
+            "description": "Close the Codex terminal, rename the folder outside VS Code, reopen the new path, then refresh ChatAnchor.\n[Refresh conversations](command:threadrelink.refresh)",
             "media": {
               "image": "media/guide/04-resume-after-rename.png",
               "altText": "A renamed project with its linked Codex conversation"
@@ -213,7 +214,7 @@
           {
             "id": "threadrelink.gettingStarted.resume",
             "title": "Resume the original conversation",
-            "description": "Hover a conversation and select the continue icon. ThreadRelink opens `codex resume --cd <new-path> <thread-id>`, `agent --resume <chat-id> --workspace <new-path>`, or `opencode --session <id>` in an integrated terminal.\n[Resume a conversation](command:threadrelink.resume)",
+            "description": "Hover a conversation and select the continue icon. ChatAnchor opens `codex resume --cd <new-path> <thread-id>`, `agent --resume <chat-id> --workspace <new-path>`, or `opencode --session <id>` in an integrated terminal.\n[Resume a conversation](command:threadrelink.resume)",
             "media": {
               "image": "media/guide/05-resumed-terminal.png",
               "altText": "Conversation resumed in an integrated terminal at the new path"
@@ -307,7 +308,7 @@
       ]
     },
     "configuration": {
-      "title": "ThreadRelink",
+      "title": "ChatAnchor",
       "properties": {
         "threadrelink.codexPath": {
           "type": "string",
@@ -342,7 +343,7 @@
         "threadrelink.registryHome": {
           "type": "string",
           "default": "",
-          "description": "Optional ThreadRelink state directory. Leave empty to use THREADRELINK_HOME or ~/.threadrelink."
+          "description": "Optional ChatAnchor state directory. Leave empty to use THREADRELINK_HOME or ~/.threadrelink."
         }
       }
     }

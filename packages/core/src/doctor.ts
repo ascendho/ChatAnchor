@@ -36,7 +36,7 @@ export async function runDoctor(
   checks.push({
     name: "Node.js",
     status: nodeMajor >= 22 ? "pass" : "fail",
-    message: `Node.js ${process.versions.node}; ThreadRelink requires Node.js 22 or newer.`,
+    message: `Node.js ${process.versions.node}; ChatAnchor requires Node.js 22 or newer.`,
   });
 
   const gitVersion = await readGitVersion();
@@ -159,7 +159,7 @@ export async function runDoctor(
         ? `${probe.project?.name ?? probe.workspacePath} (${probe.project?.kind ?? "project"}, ready)`
         : probe.state === "parent-choice-required"
           ? `${probe.workspacePath} is inside ${probe.gitRoot}; project setup requires an explicit boundary choice.`
-          : `${probe.workspacePath} is not set up for ThreadRelink.`,
+          : `${probe.workspacePath} is not set up for ChatAnchor.`,
     });
   } catch (error) {
     checks.push({

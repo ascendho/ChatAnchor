@@ -56,10 +56,10 @@ const manifest = JSON.parse(
 ) as ExtensionManifest;
 
 describe("VS Code extension manifest", () => {
-  it("publishes the ThreadRelink identity and icon assets", () => {
+  it("publishes the ChatAnchor identity and icon assets", () => {
     expect(manifest.name).toBe("threadrelink");
     expect(manifest.publisher).toBe("ascendho");
-    expect(manifest.displayName).toBe("ThreadRelink");
+    expect(manifest.displayName).toBe("ChatAnchor");
     expect(manifest.description).toBe(
       "A VS Code extension that keeps local Codex conversations connected to their projects after repositories are renamed or moved.",
     );

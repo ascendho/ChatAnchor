@@ -172,13 +172,13 @@ function parseRegistry(value: unknown, path: string): RegistryFile {
   ) {
     throw new ThreadRelinkError(
       "UNSUPPORTED_REGISTRY_VERSION",
-      `ThreadRelink registry uses unsupported schema version ${value.schemaVersion}: ${path}`,
+      `ChatAnchor registry uses unsupported schema version ${value.schemaVersion}: ${path}`,
     );
   }
 
   throw new ThreadRelinkError(
     "INVALID_REGISTRY",
-    `ThreadRelink registry is invalid (${path}): ${current.error.message}`,
+    `ChatAnchor registry is invalid (${path}): ${current.error.message}`,
   );
 }
 
@@ -250,7 +250,7 @@ export class RegistryStore {
       } catch (error) {
         throw new ThreadRelinkError(
           "INVALID_REGISTRY",
-          `ThreadRelink registry is invalid JSON: ${path}`,
+          `ChatAnchor registry is invalid JSON: ${path}`,
           { cause: error },
         );
       }

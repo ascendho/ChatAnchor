@@ -15,6 +15,7 @@ pnpm monorepo (pnpm 10.13.1, Node >=22), two packages:
 
 ## Gotchas
 
+- **Branding**: the extension's display name is **ChatAnchor** (formerly ThreadRelink), but the Marketplace extension ID (`ascendho.threadrelink`), package names, command/setting/view IDs, env vars (`THREADRELINK_*`), and data paths (`~/.threadrelink`, `.threadrelink/project.json`) intentionally keep the old name for compatibility.
 - **Core must be rebuilt for the vscode package to see changes.** Typecheck uses `tsconfig.base.json` paths (`@threadrelink/core` → `packages/core/src/index.ts`), but esbuild and vitest resolve the workspace symlink to `packages/core/dist/`. After editing core, run `pnpm --filter @threadrelink/core build` before vscode tests/build, or just run root `pnpm check`.
 - **Registry schema is versioned** (`REGISTRY_SCHEMA_VERSION` in `packages/core/src/registry.ts`, currently 4). Older versions auto-migrate forward; writes make the registry unreadable by older extension versions. Any schema change needs migration logic, not just a bump.
 - **Version bumps touch 5 places** (enforced by `pnpm check:release-version vX.Y.Z`): root `package.json`, both package manifests, the hardcoded `version: "X.Y.Z"` client-info string in `packages/core/src/codex.ts`, and a `## X.Y.Z` heading in `packages/vscode/CHANGELOG.md`.

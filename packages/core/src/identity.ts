@@ -37,7 +37,7 @@ async function readIdentityFile(identityPath: string): Promise<FolderIdentity | 
     if (!parsed.success) {
       throw new ThreadRelinkError(
         "INVALID_PROJECT_IDENTITY",
-        `ThreadRelink identity is invalid: ${identityPath}`,
+        `ChatAnchor identity is invalid: ${identityPath}`,
       );
     }
     return parsed.data;
@@ -52,7 +52,7 @@ async function readIdentityFile(identityPath: string): Promise<FolderIdentity | 
     if (error instanceof SyntaxError) {
       throw new ThreadRelinkError(
         "INVALID_PROJECT_IDENTITY",
-        `ThreadRelink identity is invalid: ${identityPath}`,
+        `ChatAnchor identity is invalid: ${identityPath}`,
         { cause: error },
       );
     }

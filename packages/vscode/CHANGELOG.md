@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Rename the extension display name to **ChatAnchor** (formerly ThreadRelink).
+  The Marketplace extension ID remains `ascendho.threadrelink`, and command
+  and setting prefixes remain `threadrelink.*`.
+
 ## 0.6.1
 
 - Relicense the extension from MIT to GPL-3.0.

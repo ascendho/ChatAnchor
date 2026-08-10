@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Rename the extension display name to **ChatAnchor** (formerly ThreadRelink);
+  the Marketplace extension ID and command/setting prefixes stay unchanged.
+
 ## 0.6.1
 
 - Relicense the project from MIT to GPL-3.0.
