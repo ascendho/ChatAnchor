@@ -17,3 +17,7 @@ coverage/
 
 # Local maintainer reference
 /docs/MARKETPLACE_PUBLISHING.md
+
+# Generated artwork kept local (social preview / promo)
+assets/chat-anchor-social-preview*.png
+assets/chat-anchor-promo*.png

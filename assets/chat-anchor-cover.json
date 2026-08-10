@@ -1,0 +1,72 @@
+{
+  "schema_version": 4,
+  "cover_style": "clean-editorial",
+  "logo_style": "clean-geometric",
+  "repository_slug": "chat-anchor",
+  "project_name": "ChatAnchor",
+  "project_url": "https://github.com/ascendho/ChatAnchor",
+  "default_locale": "en",
+  "source_files": [
+    "README.md",
+    "README_EN.md",
+    "packages/vscode/README.md",
+    "packages/vscode/package.json",
+    "AGENTS.md",
+    "packages/vscode/resources/threadrelink.svg"
+  ],
+  "logo_lockup": "chat-anchor-logo-lockup.png",
+  "locales": {
+    "en": {
+      "language": "en",
+      "cover": {
+        "headline": "AI conversations, anchored to your project",
+        "description_lines": [
+          "Codex, Cursor, and OpenCode chats survive renames",
+          "Local-first — no uploads, no telemetry"
+        ]
+      },
+      "social_preview": {
+        "headline": "Keep AI conversations anchored to their project",
+        "description_lines": [
+          "Codex, Cursor Agent CLI, and OpenCode conversations reconnect after a folder is renamed or moved",
+          "Local-first VS Code extension — metadata only, no uploads, no telemetry"
+        ]
+      },
+      "promo": {
+        "headline": "Conversations that stay anchored",
+        "description_lines": [
+          "Rename or move the folder — Codex, Cursor, and OpenCode chats reconnect",
+          "Runs entirely on your machine with metadata-only scans"
+        ],
+        "notice": "Free & open source · GPL-3.0",
+        "cta": "Install from the Marketplace"
+      }
+    },
+    "zh-cn": {
+      "language": "zh-CN",
+      "cover": {
+        "headline": "把 AI 会话锚定在你的项目上",
+        "description_lines": [
+          "Codex、Cursor、OpenCode 会话，改名后依然找得回",
+          "完全本地运行：不上传、无遥测"
+        ]
+      },
+      "social_preview": {
+        "headline": "让 AI 会话始终锚定在项目上",
+        "description_lines": [
+          "文件夹改名或移动后，Codex、Cursor Agent CLI、OpenCode 会话自动重连",
+          "本地优先的 VS Code 扩展：只读元数据，不上传任何数据"
+        ]
+      },
+      "promo": {
+        "headline": "会话锚定，项目随行",
+        "description_lines": [
+          "项目改名或移动后，一键恢复原 AI 会话",
+          "完全本机运行，只读元数据，无遥测"
+        ],
+        "notice": "免费开源 · GPL-3.0",
+        "cta": "从 Marketplace 安装"
+      }
+    }
+  }
+}

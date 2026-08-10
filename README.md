@@ -2,6 +2,8 @@
 
 > English: [README_EN.md](README_EN.md)
 
+![ChatAnchor — 把 AI 会话锚定在你的项目上](assets/chat-anchor-cover-zh-cn.png)
+
 [![CI](https://github.com/ascendho/ChatAnchor/actions/workflows/ci.yml/badge.svg?style=flat-square)](https://github.com/ascendho/ChatAnchor/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/ascendho/ChatAnchor?style=flat-square&label=Release)](https://github.com/ascendho/ChatAnchor/releases/latest)
 [![License](https://img.shields.io/github/license/ascendho/ChatAnchor?style=flat-square&label=License)](LICENSE)

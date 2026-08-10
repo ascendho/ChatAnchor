@@ -2,6 +2,8 @@
 
 > 中文：[README.md](https://github.com/ascendho/ChatAnchor/blob/main/README.md)
 
+![ChatAnchor — AI conversations, anchored to your project](https://raw.githubusercontent.com/ascendho/ChatAnchor/main/assets/chat-anchor-cover.png)
+
 [![CI](https://github.com/ascendho/ChatAnchor/actions/workflows/ci.yml/badge.svg?style=flat-square)](https://github.com/ascendho/ChatAnchor/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/ascendho/ChatAnchor?style=flat-square&label=Release)](https://github.com/ascendho/ChatAnchor/releases/latest)
 [![License](https://img.shields.io/github/license/ascendho/ChatAnchor?style=flat-square&label=License)](LICENSE)
