@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.3
+
+- Use the transparent two-tone ChatAnchor mark as the extension icon, matching
+  the repository logo without a background tile.
+
 ## 1.0.2
 
 - Slightly enlarge the activity bar icon.

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.3
+
+- Switch the extension icon to the transparent two-tone ChatAnchor mark (no
+  background tile).
+
 ## 1.0.2
 
 - Slightly enlarge the activity bar icon; switch the Marketplace icon to a

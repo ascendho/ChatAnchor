@@ -2,7 +2,7 @@
   "name": "threadrelink",
   "displayName": "ChatAnchor",
   "description": "A VS Code extension that keeps AI coding agent conversations connected to their projects after folders are renamed or moved.",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "icon": "resources/threadrelink.png",
   "publisher": "ascendho",
   "repository": {
