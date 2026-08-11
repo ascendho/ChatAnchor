@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1
+
+- Enlarge the extension icon and activity bar artwork so the ChatAnchor mark
+  fills a similar share of the tile as other extensions.
+
 ## 1.0.0
 
 - Rename the extension display name to **ChatAnchor** (formerly ThreadRelink).

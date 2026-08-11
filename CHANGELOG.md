@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1
+
+- Enlarge the extension icon and activity bar artwork to match the visual size
+  of other extensions.
+
 ## 1.0.0
 
 - Rename the extension display name to **ChatAnchor** (formerly ThreadRelink);
