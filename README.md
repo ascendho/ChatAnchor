@@ -16,12 +16,12 @@ ChatAnchor 是一个本地 VS Code 扩展：项目文件夹改名或移动后，
 
 - 支持 **Codex**、**Cursor Agent CLI** 和 **OpenCode** 会话
 - 项目改名或移动后自动重连：基于 Git remote + commit、路径别名等保守证据，绝不只凭目录名关联
-- 一键恢复原会话：`codex resume --cd`、`agent --resume --workspace`、`opencode --session`
+- 一键恢复原会话：`codex resume --cd`、`agent --resume --workspace`、`opencode <new-path> --session`
 - Copy @ Path / Reveal 会话文件（Codex、Cursor）
 - Find Old Conversations 找回历史会话；支持移除、移动、忽略和恢复链接
 - 完全本地运行、无遥测、不上传任何数据
 
-> **OpenCode** 会话没有独立文件（存在本地 `opencode.db` 中），因此不提供 Reveal / Copy @ Path；恢复会话需要原目录仍然存在，改名/移动时请用 `opencode export <id>` 后在新目录 `opencode import` 迁移。
+> **OpenCode** 会话没有独立文件（存在本地 `opencode.db` 中），因此不提供 Reveal / Copy @ Path；ChatAnchor 会用当前项目路径运行 `opencode <new-path> --session <id>` 来继续会话。
 
 ## 快速开始
 
@@ -46,7 +46,7 @@ ChatAnchor 是一个本地 VS Code 扩展：项目文件夹改名或移动后，
 
 5. **改名并重开文件夹**：关闭 Codex 终端，在 VS Code 外重命名项目文件夹，重新打开，然后点击「Refresh Conversations」。
 
-6. **继续原会话**：悬停会话行并点击继续图标，ChatAnchor 会在新路径打开 `codex resume --cd <new-path> <thread-id>`、`agent --resume <chat-id> --workspace <new-path>` 或 `opencode --session <id>` 的集成终端。
+6. **继续原会话**：悬停会话行并点击继续图标，ChatAnchor 会在新路径打开 `codex resume --cd <new-path> <thread-id>`、`agent --resume <chat-id> --workspace <new-path>` 或 `opencode <new-path> --session <id>` 的集成终端。
 
 ## 本地数据与隐私
 

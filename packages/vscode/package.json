@@ -2,7 +2,7 @@
   "name": "threadrelink",
   "displayName": "ChatAnchor",
   "description": "A VS Code extension that keeps AI coding agent conversations connected to their projects after folders are renamed or moved.",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "icon": "resources/threadrelink.png",
   "publisher": "ascendho",
   "repository": {
@@ -214,7 +214,7 @@
           {
             "id": "threadrelink.gettingStarted.resume",
             "title": "Resume the original conversation",
-            "description": "Hover a conversation and select the continue icon. ChatAnchor opens `codex resume --cd <new-path> <thread-id>`, `agent --resume <chat-id> --workspace <new-path>`, or `opencode --session <id>` in an integrated terminal.\n[Resume a conversation](command:threadrelink.resume)",
+            "description": "Hover a conversation and select the continue icon. ChatAnchor opens `codex resume --cd <new-path> <thread-id>`, `agent --resume <chat-id> --workspace <new-path>`, or `opencode <new-path> --session <id>` in an integrated terminal.\n[Resume a conversation](command:threadrelink.resume)",
             "media": {
               "image": "media/guide/05-resumed-terminal.png",
               "altText": "Conversation resumed in an integrated terminal at the new path"

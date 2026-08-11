@@ -104,6 +104,11 @@ describe("OpenCode adapter", () => {
 
   it("builds resume args for opencode --session", () => {
     expect(buildOpenCodeResumeArgs("ses_01")).toEqual(["--session", "ses_01"]);
+    expect(buildOpenCodeResumeArgs("ses_01", "/work/proj-new")).toEqual([
+      normalizeAbsolutePath("/work/proj-new"),
+      "--session",
+      "ses_01",
+    ]);
   });
 
   it("maps rows and filters subagents / missing cwds", () => {

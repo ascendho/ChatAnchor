@@ -31,9 +31,14 @@ export function resolveOpenCodePath(explicitPath?: string): string {
     ?? "opencode";
 }
 
-/** Args for `opencode --session <id>`. */
-export function buildOpenCodeResumeArgs(sessionId: string): string[] {
-  return ["--session", sessionId];
+/** Args for `opencode [project] --session <id>`. */
+export function buildOpenCodeResumeArgs(
+  sessionId: string,
+  projectPath?: string,
+): string[] {
+  return projectPath
+    ? [normalizeAbsolutePath(projectPath), "--session", sessionId]
+    : ["--session", sessionId];
 }
 
 export async function readOpenCodeVersion(
@@ -60,12 +65,13 @@ export async function runOpenCodeResume(
   cwd: string,
   options: { openCodePath?: string } = {},
 ): Promise<number> {
+  const target = normalizeAbsolutePath(cwd);
   return await new Promise((resolve, reject) => {
     const child = spawn(
       resolveOpenCodePath(options.openCodePath),
-      buildOpenCodeResumeArgs(sessionId),
+      buildOpenCodeResumeArgs(sessionId, target),
       {
-        cwd: normalizeAbsolutePath(cwd),
+        cwd: target,
         stdio: "inherit",
         windowsHide: false,
       },
@@ -197,7 +203,7 @@ export async function listOpenCodeThreads(options: {
   }
 }
 
-/** The OpenCode session directory is needed to resume; returns the stored cwd. */
+/** Returns the stored OpenCode session directory metadata. */
 export async function resolveOpenCodeSessionDirectory(
   sessionId: string,
   options: { openCodeHome?: string } = {},

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.4
+
+- Resume OpenCode conversations from the current ChatAnchor project path with
+  `opencode <new-path> --session <id>` instead of blocking when the historical
+  session directory no longer exists.
+- Focus the existing resume terminal when the same conversation is resumed
+  again, avoiding duplicate Codex resume processes for an already-open session.
+
 ## 1.0.3
 
 - Switch the extension icon to the transparent two-tone ChatAnchor mark (no
@@ -29,9 +37,9 @@
 ## 0.6.0
 
 - Add OpenCode conversation discovery from the local `opencode.db` (list,
-  match/link, and resume via `opencode --session <id>` when the session's
-  original directory still exists). Reveal / Copy @ Path stay hidden for
-  OpenCode sessions because they have no standalone file.
+  match/link, and resume via `opencode <path> --session <id>`). Reveal / Copy
+  @ Path stay hidden for OpenCode sessions because they have no standalone
+  file.
 - Add Copy @ Conversation Path between Resume and Reveal: copies
   `@<absolute-path>` to the clipboard for pasting into Cursor Chat/Agent.
 

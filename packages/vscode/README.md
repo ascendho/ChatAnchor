@@ -16,12 +16,12 @@ ChatAnchor is a local VS Code extension: after a project folder is renamed or mo
 
 - Supports **Codex**, **Cursor Agent CLI**, and **OpenCode** conversations
 - Automatically reconnects after a project is renamed or moved, based on conservative evidence such as Git remote + commit and path aliases — never links by directory name alone
-- One-click resume of the original conversation: `codex resume --cd`, `agent --resume --workspace`, `opencode --session`
+- One-click resume of the original conversation: `codex resume --cd`, `agent --resume --workspace`, `opencode <new-path> --session`
 - Copy @ Path / Reveal conversation files (Codex, Cursor)
 - Find Old Conversations to recover history; remove, move, ignore, and restore links
 - Runs entirely locally — no telemetry, nothing uploaded
 
-> **OpenCode** conversations have no standalone file (they live in the local `opencode.db`), so Reveal / Copy @ Path is not available for them; resuming a session requires its original directory to still exist. After a rename/move, migrate with `opencode export <id>` followed by `opencode import` in the new directory.
+> **OpenCode** conversations have no standalone file (they live in the local `opencode.db`), so Reveal / Copy @ Path is not available for them; ChatAnchor resumes them by running `opencode <new-path> --session <id>` with the current project path.
 
 ## Getting started
 
@@ -46,7 +46,7 @@ ChatAnchor is a local VS Code extension: after a project folder is renamed or mo
 
 5. **Rename and reopen the folder**: close the Codex terminal, rename the folder outside VS Code, reopen it, then click "Refresh Conversations".
 
-6. **Resume the original conversation**: hover a conversation row and click the continue icon. ChatAnchor opens an integrated terminal running `codex resume --cd <new-path> <thread-id>`, `agent --resume <chat-id> --workspace <new-path>`, or `opencode --session <id>` at the new path.
+6. **Resume the original conversation**: hover a conversation row and click the continue icon. ChatAnchor opens an integrated terminal running `codex resume --cd <new-path> <thread-id>`, `agent --resume <chat-id> --workspace <new-path>`, or `opencode <new-path> --session <id>` at the new path.
 
 ## Local data and privacy
 

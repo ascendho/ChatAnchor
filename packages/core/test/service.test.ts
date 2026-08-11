@@ -259,6 +259,82 @@ describe("ThreadRelinkService", () => {
     });
   }, 20_000);
 
+  it("resolves OpenCode resume targets after a project directory is renamed", async () => {
+    const base = await mkdtemp(join(tmpdir(), "threadrelink-opencode-move-"));
+    cleanup.push(base);
+    const oldRoot = join(base, "threadrelink");
+    const newRoot = join(base, "ChatAnchor");
+    const registryHome = join(base, "state");
+    const openCodeHome = join(base, "opencode-home");
+    await mkdir(oldRoot);
+    await mkdir(openCodeHome);
+    await execFileAsync("git", ["init", oldRoot]);
+
+    const database = new DatabaseSync(join(openCodeHome, "opencode.db"));
+    try {
+      database.exec(`
+        CREATE TABLE project (id TEXT PRIMARY KEY, worktree TEXT NOT NULL);
+        CREATE TABLE session (
+          id TEXT PRIMARY KEY,
+          project_id TEXT,
+          parent_id TEXT,
+          directory TEXT NOT NULL,
+          title TEXT NOT NULL,
+          version TEXT NOT NULL,
+          time_created INTEGER NOT NULL,
+          time_updated INTEGER NOT NULL,
+          time_archived INTEGER
+        );
+      `);
+      database.prepare(
+        "INSERT INTO project (id, worktree) VALUES (?, ?)",
+      ).run("project-1", oldRoot);
+      database.prepare(
+        `INSERT INTO session
+           (id, project_id, parent_id, directory, title, version,
+            time_created, time_updated, time_archived)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        "ses_rename",
+        "project-1",
+        null,
+        oldRoot,
+        "OpenCode moved project",
+        "1.18.14",
+        1_700_000_000_000,
+        1_700_000_300_000,
+        null,
+      );
+    } finally {
+      database.close();
+    }
+
+    const service = new ThreadRelinkService({
+      registryHome,
+      openCodeHome,
+      historyAdapterFactory: async () => adapterFor([]),
+      now: () => new Date("2026-07-29T00:00:00.000Z"),
+    });
+    await service.setupProject(oldRoot);
+    expect((await service.sync(oldRoot)).linked.map((item) => item.thread.id))
+      .toContain("ses_rename");
+
+    await rename(oldRoot, newRoot);
+    const moved = await service.sync(newRoot);
+    const target = await service.resolveResumeTarget(
+      "ses_rename",
+      newRoot,
+      "opencode",
+    );
+
+    expect(moved.linked.map((item) => item.thread.id)).toContain("ses_rename");
+    expect(target).toMatchObject({
+      path: await realpath(newRoot),
+      mode: "project-root",
+      warning: null,
+    });
+  }, 20_000);
+
   it("moves a stale automatic link when the current project has stronger evidence", async () => {
     const base = await mkdtemp(join(tmpdir(), "threadrelink-stale-link-"));
     cleanup.push(base);

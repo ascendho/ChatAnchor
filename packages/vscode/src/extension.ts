@@ -1,12 +1,10 @@
 import * as vscode from "vscode";
-import { access } from "node:fs/promises";
 import {
   ThreadRelinkService,
   buildCursorResumeArgs,
   buildOpenCodeResumeArgs,
   errorMessage,
   resolveExecutablePath,
-  resolveOpenCodeSessionDirectory,
   runDoctor,
   type MatchDecision,
   type ProjectProbe,
@@ -27,6 +25,10 @@ import {
   ONBOARDING_SHOWN_KEY,
   walkthroughTarget,
 } from "./onboarding.js";
+import {
+  ResumeTerminalRegistry,
+  resumeTerminalIdentity,
+} from "./resume-terminals.js";
 
 const CONSENT_KEY = "threadrelink.metadataConsent.v1";
 const REPAIR_WARNING_PREFIX = "threadrelink.repairWarning.v1";
@@ -190,6 +192,7 @@ export async function activate(
 ): Promise<void> {
   const provider = new ThreadRelinkTreeProvider(context.extensionUri);
   const output = vscode.window.createOutputChannel("ChatAnchor");
+  const resumeTerminals = new ResumeTerminalRegistry<vscode.Terminal>();
   const view = vscode.window.createTreeView("threadrelink.conversations", {
     treeDataProvider: provider,
     showCollapseAll: false,
@@ -737,6 +740,9 @@ export async function activate(
   };
 
   context.subscriptions.push(
+    vscode.window.onDidCloseTerminal((terminal) => {
+      resumeTerminals.deleteTerminal(terminal);
+    }),
     vscode.commands.registerCommand(
       "threadrelink.openGettingStarted",
       openGettingStarted,
@@ -824,6 +830,15 @@ export async function activate(
           if (target.warning) {
             void vscode.window.showWarningMessage(target.warning);
           }
+          const terminalIdentity = resumeTerminalIdentity(
+            conversationProvider,
+            target,
+          );
+          const existingTerminal = resumeTerminals.get(terminalIdentity);
+          if (existingTerminal) {
+            existingTerminal.show();
+            return;
+          }
           const settings = readSettings();
           let shellPath: string;
           let shellArgs: string[];
@@ -841,19 +856,6 @@ export async function activate(
               target.path,
             );
           } else if (conversationProvider === "opencode") {
-            const sessionDirectory = await resolveOpenCodeSessionDirectory(
-              selected.decision.thread.id,
-              { openCodeHome: settings.openCodeHome },
-            );
-            if (
-              !sessionDirectory
-              || await access(sessionDirectory).then(() => true).catch(() => false) === false
-            ) {
-              void vscode.window.showErrorMessage(
-                `ChatAnchor: OpenCode cannot resume this session because its original directory (${sessionDirectory ?? selected.decision.thread.cwd}) no longer exists after the move. OpenCode requires the original session directory to resume a session; use "opencode export <session-id>" then "opencode import" from the new path to relocate it.`,
-              );
-              return;
-            }
             const openCodeExecutable = resolveExecutablePath(settings.openCodePath);
             if (!openCodeExecutable) {
               void vscode.window.showErrorMessage(
@@ -862,7 +864,10 @@ export async function activate(
               return;
             }
             shellPath = openCodeExecutable;
-            shellArgs = buildOpenCodeResumeArgs(selected.decision.thread.id);
+            shellArgs = buildOpenCodeResumeArgs(
+              selected.decision.thread.id,
+              target.path,
+            );
           } else {
             const executable = resolveExecutablePath(settings.codexPath);
             if (!executable) {
@@ -886,6 +891,7 @@ export async function activate(
             cwd: target.path,
             iconPath: new vscode.ThemeIcon("history"),
           });
+          resumeTerminals.set(terminalIdentity, terminal);
           terminal.show();
         } catch (error) {
           void vscode.window.showErrorMessage(
