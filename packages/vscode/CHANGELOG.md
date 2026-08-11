@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.2
+
+- Slightly enlarge the activity bar icon.
+- Replace the white Marketplace icon tile with a brand-blue tile and white
+  mark, matching the colored-tile convention of other extensions and working
+  in both light and dark lists.
+
 ## 1.0.1
 
 - Enlarge the extension icon and activity bar artwork so the ChatAnchor mark

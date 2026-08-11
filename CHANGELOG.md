@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.2
+
+- Slightly enlarge the activity bar icon; switch the Marketplace icon to a
+  brand-blue tile with a white mark.
+
 ## 1.0.1
 
 - Enlarge the extension icon and activity bar artwork to match the visual size
