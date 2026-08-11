@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import {
   ThreadRelinkService,
+  buildCodexResumeArgs,
   buildCursorResumeArgs,
   buildOpenCodeResumeArgs,
   errorMessage,
@@ -26,7 +27,10 @@ import {
   walkthroughTarget,
 } from "./onboarding.js";
 import {
+  findExistingResumeTerminal,
+  isActiveResumeTerminal,
   ResumeTerminalRegistry,
+  resumeTerminalEnv,
   resumeTerminalIdentity,
 } from "./resume-terminals.js";
 
@@ -834,10 +838,13 @@ export async function activate(
             conversationProvider,
             target,
           );
-          const existingTerminal = resumeTerminals.get(terminalIdentity);
-          if (existingTerminal) {
-            existingTerminal.show();
-            return;
+          const registeredTerminal = resumeTerminals.get(terminalIdentity);
+          if (registeredTerminal) {
+            if (isActiveResumeTerminal(registeredTerminal)) {
+              registeredTerminal.show();
+              return;
+            }
+            resumeTerminals.deleteTerminal(registeredTerminal);
           }
           const settings = readSettings();
           let shellPath: string;
@@ -877,18 +884,27 @@ export async function activate(
               return;
             }
             shellPath = executable;
-            shellArgs = [
-              "resume",
-              "--cd",
-              target.path,
+            shellArgs = buildCodexResumeArgs(
               selected.decision.thread.id,
-            ];
+              target.path,
+            );
+          }
+          const existingTerminal = findExistingResumeTerminal(
+            vscode.window.terminals,
+            terminalIdentity,
+            { shellPath, shellArgs, cwd: target.path },
+          );
+          if (existingTerminal) {
+            resumeTerminals.set(terminalIdentity, existingTerminal);
+            existingTerminal.show();
+            return;
           }
           const terminal = vscode.window.createTerminal({
             name: `ChatAnchor: ${conversationLabel(selected.decision)}`,
             shellPath,
             shellArgs,
             cwd: target.path,
+            env: resumeTerminalEnv(terminalIdentity),
             iconPath: new vscode.ThemeIcon("history"),
           });
           resumeTerminals.set(terminalIdentity, terminal);

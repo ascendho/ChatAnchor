@@ -171,7 +171,7 @@ export class CodexAppServerClient implements HistoryAdapter {
       clientInfo: {
         name: "threadrelink",
         title: "ThreadRelink",
-        version: "1.0.4",
+        version: "1.0.5",
       },
     });
     this.send({
@@ -267,6 +267,10 @@ export async function readCodexVersion(codexPath?: string): Promise<string> {
   }
 }
 
+export function buildCodexResumeArgs(threadId: string, cwd: string): string[] {
+  return ["resume", "--cd", cwd, threadId];
+}
+
 export async function runCodexResume(
   threadId: string,
   cwd: string,
@@ -275,7 +279,7 @@ export async function runCodexResume(
   return await new Promise((resolve, reject) => {
     const child = spawn(
       resolveCodexPath(options.codexPath),
-      ["resume", "--cd", cwd, threadId],
+      buildCodexResumeArgs(threadId, cwd),
       {
         cwd,
         stdio: "inherit",

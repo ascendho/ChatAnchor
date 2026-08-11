@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.5
+
+- Reuse already-running Codex resume terminals after an extension reload or
+  local VSIX update, preventing duplicate `codex resume` launches that exit
+  with code 1.
+
 ## 1.0.4
 
 - Resume OpenCode conversations from the current ChatAnchor project path with
