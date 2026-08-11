@@ -21,3 +21,6 @@ coverage/
 # Generated artwork kept local (social preview / promo)
 assets/chat-anchor-social-preview*.png
 assets/chat-anchor-promo*.png
+
+# Local maintainer architecture notes
+/docs/ARCHITECTURE.md
