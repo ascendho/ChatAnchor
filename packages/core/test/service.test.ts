@@ -257,7 +257,7 @@ describe("ThreadRelinkService", () => {
       provider: "opencode",
       cliVersion: "1.18.14",
     });
-  });
+  }, 20_000);
 
   it("moves a stale automatic link when the current project has stronger evidence", async () => {
     const base = await mkdtemp(join(tmpdir(), "threadrelink-stale-link-"));

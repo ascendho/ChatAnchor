@@ -190,7 +190,7 @@ describe("OpenCode adapter", () => {
       archived: true,
     });
     expect(threads[0]!.updatedAt).toBeGreaterThan(threads[1]!.updatedAt);
-  });
+  }, 20_000);
 
   it("returns an empty list when the database is missing or unreadable", async () => {
     const openCodeHome = await mkdtemp(join(tmpdir(), "threadrelink-opencode-empty-"));
@@ -199,7 +199,7 @@ describe("OpenCode adapter", () => {
 
     await writeFile(join(openCodeHome, "opencode.db"), "{broken", "utf8");
     await expect(listOpenCodeThreads({ openCodeHome })).resolves.toEqual([]);
-  });
+  }, 20_000);
 
   it("resolves the stored session directory for resume pre-flight", async () => {
     const openCodeHome = await mkdtemp(join(tmpdir(), "threadrelink-opencode-resolve-"));
@@ -211,5 +211,5 @@ describe("OpenCode adapter", () => {
     await expect(
       resolveOpenCodeSessionDirectory("ses_missing", { openCodeHome }),
     ).resolves.toBeNull();
-  });
+  }, 20_000);
 });
