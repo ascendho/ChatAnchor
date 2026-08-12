@@ -103,6 +103,7 @@ describe("VS Code extension manifest", () => {
     expect(commandIds).toContain("threadrelink.forgetProject");
     expect(commandIds).toContain("threadrelink.unlink");
     expect(commandIds).toContain("threadrelink.move");
+    expect(commandIds).toContain("threadrelink.manageLink");
     expect(commandIds).toContain("threadrelink.editDescription");
     expect(commandIds).toContain("threadrelink.hideConversation");
     expect(commandIds).toContain("threadrelink.showConversation");
@@ -135,6 +136,12 @@ describe("VS Code extension manifest", () => {
       expect.objectContaining({
         title: "ChatAnchor: Unhide All Conversations",
         icon: "$(clear-all)",
+      }),
+    );
+    expect(commandById.get("threadrelink.manageLink")).toEqual(
+      expect.objectContaining({
+        title: "ChatAnchor: Manage Conversation Link...",
+        icon: "$(tools)",
       }),
     );
 
@@ -245,6 +252,16 @@ describe("VS Code extension manifest", () => {
         when:
           "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)\\.hidden$/",
         group: "manage@3",
+      }),
+    ]);
+
+    const manageLinkMenus = manifest.contributes.menus["view/item/context"]
+      .filter((entry) => entry.command === "threadrelink.manageLink");
+    expect(manageLinkMenus).toEqual([
+      expect.objectContaining({
+        when:
+          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)(\\.hidden)?$/",
+        group: "manage@4",
       }),
     ]);
 

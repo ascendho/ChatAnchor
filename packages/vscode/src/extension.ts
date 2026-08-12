@@ -636,16 +636,20 @@ export async function activate(
   const removeThreadLink = async (
     node?: ThreadRelinkTreeNode,
   ): Promise<void> => {
-    if (node?.kind !== "thread") {
+    const selected = node?.kind === "thread"
+      ? node
+      : await chooseThread(
+          provider.allLinked(),
+          "Choose a project conversation to remove from this project",
+        );
+    if (!selected || selected.kind !== "thread") {
       return;
     }
-    const projectId =
-      node.workspace.sync?.project.id
-      ?? node.workspace.probe?.project?.id;
+    const projectId = projectIdForThreadNode(selected);
     if (!projectId) {
       return;
     }
-    const label = conversationLabel(node.decision);
+    const label = conversationLabel(selected.decision);
     const choice = await vscode.window.showWarningMessage(
       `Remove “${label}” from this project and ignore future automatic matches? This changes only ChatAnchor's local registry.`,
       { modal: true },
@@ -656,9 +660,9 @@ export async function activate(
     }
     try {
       await makeService().ignoreThreadForProject(
-        node.decision.thread.id,
+        selected.decision.thread.id,
         projectId,
-        node.decision.thread.provider,
+        selected.decision.thread.provider,
       );
       void vscode.window.showInformationMessage(
         `Removed “${label}” from this project. You can restore it from Find Old Conversations.`,
@@ -810,12 +814,16 @@ export async function activate(
   const moveThreadLink = async (
     node?: ThreadRelinkTreeNode,
   ): Promise<void> => {
-    if (node?.kind !== "thread") {
+    const threadNode = node?.kind === "thread"
+      ? node
+      : await chooseThread(
+          provider.allLinked(),
+          "Choose a project conversation to move",
+        );
+    if (!threadNode || threadNode.kind !== "thread") {
       return;
     }
-    const currentProjectId =
-      node.workspace.sync?.project.id
-      ?? node.workspace.probe?.project?.id;
+    const currentProjectId = projectIdForThreadNode(threadNode);
     if (!currentProjectId) {
       return;
     }
@@ -850,17 +858,17 @@ export async function activate(
           projectId: project.id,
         };
       }));
-      const selected = await vscode.window.showQuickPick(choices, {
+      const selectedProject = await vscode.window.showQuickPick(choices, {
         placeHolder: "Choose the project that owns this conversation",
         matchOnDetail: true,
         ignoreFocusOut: true,
       });
-      if (!selected) {
+      if (!selectedProject) {
         return;
       }
-      const label = conversationLabel(node.decision);
+      const label = conversationLabel(threadNode.decision);
       const choice = await vscode.window.showWarningMessage(
-        `Move “${label}” to ${selected.label}? The old project will ignore future automatic matches for this conversation.`,
+        `Move “${label}” to ${selectedProject.label}? The old project will ignore future automatic matches for this conversation.`,
         { modal: true },
         "Move conversation",
       );
@@ -868,16 +876,53 @@ export async function activate(
         return;
       }
       await service.linkThreadToProject(
-        node.decision.thread.id,
-        selected.projectId,
-        node.decision.thread.provider,
+        threadNode.decision.thread.id,
+        selectedProject.projectId,
+        threadNode.decision.thread.provider,
       );
       void vscode.window.showInformationMessage(
-        `Moved “${label}” to ${selected.label}.`,
+        `Moved “${label}” to ${selectedProject.label}.`,
       );
       await refresh(false);
     } catch (error) {
       void vscode.window.showErrorMessage(`ChatAnchor: ${errorMessage(error)}`);
+    }
+  };
+
+  const manageThreadLink = async (
+    node?: ThreadRelinkTreeNode,
+  ): Promise<void> => {
+    const selected = node?.kind === "thread"
+      ? node
+      : await chooseThread(
+          provider.allLinked(),
+          "Choose a project conversation to manage",
+        );
+    if (!selected || selected.kind !== "thread") {
+      return;
+    }
+    const choice = await vscode.window.showQuickPick(
+      [
+        {
+          label: "$(arrow-swap) Move Link to Another Project",
+          description: "Assign this conversation to a different ChatAnchor project.",
+          action: "move" as const,
+        },
+        {
+          label: "$(remove-close) Remove Link and Ignore for This Project",
+          description: "Remove it here and prevent future automatic matches.",
+          action: "remove" as const,
+        },
+      ],
+      {
+        placeHolder: `Manage “${conversationLabel(selected.decision)}”`,
+        ignoreFocusOut: true,
+      },
+    );
+    if (choice?.action === "move") {
+      await moveThreadLink(selected);
+    } else if (choice?.action === "remove") {
+      await removeThreadLink(selected);
     }
   };
 
@@ -1008,6 +1053,10 @@ export async function activate(
     vscode.commands.registerCommand(
       "threadrelink.showConversation",
       showThread,
+    ),
+    vscode.commands.registerCommand(
+      "threadrelink.manageLink",
+      manageThreadLink,
     ),
     vscode.commands.registerCommand(
       "threadrelink.move",
@@ -1277,6 +1326,7 @@ export async function activate(
     "showHiddenConversations",
     "hideHiddenConversations",
     "restoreHiddenConversations",
+    "manageLink",
     "resume",
     "copyAtPath",
     "revealLocation",

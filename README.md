@@ -20,7 +20,8 @@ ChatAnchor 是一个本地 VS Code 扩展：项目文件夹改名或移动后，
 - Copy @ Path / Reveal 会话文件（Codex、Cursor）
 - 自定义会话描述，让侧边栏里的长标题或泛化标题更容易识别
 - 隐藏暂时不需要的会话，并可随时显示隐藏项或一键取消隐藏
-- Find Old Conversations 找回历史会话；支持移除、移动、忽略和恢复链接
+- Find Old Conversations 找回历史会话，并可恢复之前忽略的会话
+- 高级链接修正：右键 **Manage Conversation Link...** 可移动错连会话，或从当前项目移除并忽略
 - 完全本地运行、无遥测、不上传任何数据
 
 > **OpenCode** 会话没有独立文件（存在本地 `opencode.db` 中），因此不提供 Reveal / Copy @ Path；ChatAnchor 会用当前项目路径运行 `opencode <new-path> --session <id>` 来继续会话。
@@ -51,6 +52,15 @@ ChatAnchor 是一个本地 VS Code 扩展：项目文件夹改名或移动后，
 6. **继续原会话**：悬停会话行并点击继续图标，ChatAnchor 会在新路径打开 `codex resume --cd <new-path> <thread-id>`、`agent --resume <chat-id> --workspace <new-path>` 或 `opencode <new-path> --session <id>` 的集成终端。
 
 7. **整理会话列表**：右键会话可编辑描述或隐藏会话；标题栏可临时显示隐藏项，也可以一键取消隐藏当前项目的所有隐藏会话。
+
+## 链接管理示例
+
+日常整理列表时，请使用 **Hide Conversation**。只有当会话和项目的归属关系错了，才需要使用链接管理：
+
+- **恢复链接**：某个旧会话没有自动出现在当前项目下。点击标题栏放大镜 **Find Old Conversations**，选择建议会话后确认 **Link conversation**。
+- **恢复被忽略的会话**：之前移除错了。点击 **Find Old Conversations**，选择 **Review ignored conversations...**，再重新链接。
+- **移动链接**：会话被连到错误项目。右键该会话，选择 **Manage Conversation Link...** → **Move Link to Another Project**。
+- **移除并忽略链接**：会话不属于当前项目，且以后也不想自动匹配回来。右键该会话，选择 **Manage Conversation Link...** → **Remove Link and Ignore for This Project**。
 
 ## 本地数据与隐私
 

@@ -1,6 +1,6 @@
 {
   "name": "@threadrelink/core",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "private": true,
   "description": "Core project identity and Codex history recovery for ThreadRelink.",
   "type": "module",

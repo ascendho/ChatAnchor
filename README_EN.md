@@ -20,7 +20,8 @@ ChatAnchor is a local VS Code extension: after a project folder is renamed or mo
 - Copy @ Path / Reveal conversation files (Codex, Cursor)
 - Custom conversation descriptions for long, noisy, or generic titles
 - Hide conversations you do not need right now, show hidden items on demand, and unhide them later
-- Find Old Conversations to recover history; remove, move, ignore, and restore links
+- Find Old Conversations to recover old conversations and relink ignored conversations
+- Advanced link fixes: right-click **Manage Conversation Link...** to move a mislinked conversation, or remove and ignore it for the current project
 - Runs entirely locally — no telemetry, nothing uploaded
 
 > **OpenCode** conversations have no standalone file (they live in the local `opencode.db`), so Reveal / Copy @ Path is not available for them; ChatAnchor resumes them by running `opencode <new-path> --session <id>` with the current project path.
@@ -51,6 +52,15 @@ ChatAnchor is a local VS Code extension: after a project folder is renamed or mo
 6. **Resume the original conversation**: hover a conversation row and click the continue icon. ChatAnchor opens an integrated terminal running `codex resume --cd <new-path> <thread-id>`, `agent --resume <chat-id> --workspace <new-path>`, or `opencode <new-path> --session <id>` at the new path.
 
 7. **Organize the list**: right-click a conversation to edit its description or hide it. The title bar can temporarily show hidden conversations, and can unhide all hidden conversations in the current project.
+
+## Link Management Examples
+
+For everyday list cleanup, use **Hide Conversation**. Use link management only when a conversation belongs to the wrong ChatAnchor project:
+
+- **Restore a link**: an old conversation did not appear under the current project. Click the title-bar search icon, **Find Old Conversations**, choose a suggested conversation, then confirm **Link conversation**.
+- **Restore an ignored conversation**: you removed the link by mistake. Open **Find Old Conversations**, choose **Review ignored conversations...**, then link it again.
+- **Move a link**: a conversation is attached to the wrong project. Right-click it and choose **Manage Conversation Link...** → **Move Link to Another Project**.
+- **Remove and ignore a link**: a conversation does not belong to this project and should not auto-match again. Right-click it and choose **Manage Conversation Link...** → **Remove Link and Ignore for This Project**.
 
 ## Local data and privacy
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.8
+
+- Add a single **Manage Conversation Link...** entry for advanced move/remove
+  link fixes without crowding the conversation context menu.
+- Clarify README link-management examples and distinguish link fixes from
+  everyday hide/unhide list cleanup.
+
 ## 1.0.7
 
 - Update the GitHub and Marketplace READMEs for custom descriptions,
