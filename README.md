@@ -16,18 +16,12 @@ ChatAnchor 是一个本地 VS Code 扩展：项目文件夹改名或移动后，
 
 - 支持 **Codex**、**Cursor Agent CLI** 和 **OpenCode** 会话
 - 项目改名或移动后自动重连：基于 Git remote + commit、路径别名等保守证据，绝不只凭目录名关联
-- 一键恢复原会话：`codex resume --cd`、`agent --resume --workspace`、`opencode <new-path> --session`
-- 从标题栏或 provider 分组直接开启新的 Codex / Cursor / OpenCode 会话
-- Copy @ Path / Reveal 会话文件（Codex、Cursor）
-- 为 OpenCode 会话导出本地 JSON 并复制可用的 `@path`
-- Copy Compact @ Transcript：把 Codex / Cursor JSONL 或 OpenCode export JSON 转成更适合 AI 阅读的 Markdown，再复制 `@path`
-- 自定义会话描述，让侧边栏里的长标题或泛化标题更容易识别
-- 隐藏暂时不需要的会话，并可随时显示隐藏项或一键取消隐藏
-- Find Old Conversations 找回历史会话，并可恢复之前忽略的会话
-- 高级链接修正：右键 **Manage Conversation Link...** 可移动错连会话，或从当前项目移除并忽略
+- 在 ChatAnchor 视图里继续旧会话，或从标题栏 / provider 分组直接开启新会话
+- 跨 agent 迁移上下文：复制 Codex / Cursor `@path`、导出 OpenCode JSON，或生成精简 Markdown transcript
+- 整理会话列表：自定义描述、隐藏 / 恢复会话、Find Old Conversations 找回历史会话
 - 完全本地运行、无遥测、不上传任何数据
 
-> **OpenCode** 会话没有独立的原始会话文件（存在本地 `opencode.db` 中），因此不提供 Reveal / Copy @ Path；ChatAnchor 会用当前项目路径运行 `opencode <new-path> --session <id>` 来继续会话。需要 `@` 给其它工具时，可以右键 OpenCode 会话选择 **Export OpenCode Conversation for @**，ChatAnchor 会调用 `opencode export <session-id>` 生成本地 JSON 并复制 `@path`。同一个会话重复导出会覆盖同一个临时 JSON 文件，不会追加；如果 OpenCode CLI 产出不完整 JSON，ChatAnchor 会只读本地 `opencode.db` 生成 fallback JSON，并保留旧导出直到新文件有效。更推荐跨 agent 迁移上下文时使用 **Copy Compact @ Transcript**，它会先生成精简 Markdown，避免原始 JSONL/JSON 的工具日志占满上下文。
+> **OpenCode** 会话存在本地 `opencode.db` 中，没有独立原始会话文件，因此不提供 Reveal / Copy @ Path。需要把上下文交给其它 agent 时，优先使用 **Copy Compact @ Transcript**；确实需要 JSON `@path` 时，使用 **Export OpenCode Conversation for @**。
 
 ## 快速开始
 
@@ -54,22 +48,29 @@ ChatAnchor 是一个本地 VS Code 扩展：项目文件夹改名或移动后，
 
 6. **继续原会话或开启新会话**：悬停会话行并点击继续图标，ChatAnchor 会在新路径打开 `codex resume --cd <new-path> <thread-id>`、`agent --resume <chat-id> --workspace <new-path>` 或 `opencode <new-path> --session <id>` 的集成终端。也可以点击标题栏加号，或 provider 分组行的加号，直接开启新的 Codex / Cursor / OpenCode 会话。
 
-7. **整理会话列表**：右键会话可编辑描述、隐藏会话、生成精简上下文，或对 Codex / Cursor 会话执行 **Reveal Conversation File**；标题栏眼睛按钮可临时显示隐藏项，也可以一键取消隐藏当前项目的所有隐藏会话。没有隐藏会话时显示普通眼睛，点击只会提示当前没有隐藏项。
+7. **整理会话列表**：右键会话可编辑描述、隐藏会话、生成精简上下文，或对 Codex / Cursor 会话执行 **Reveal Conversation File**；标题栏眼睛按钮用于显示隐藏项或一键取消隐藏。
 
-8. **跨 agent 迁移上下文**：当 Codex / Cursor / OpenCode 之间切换时，右键历史会话选择 **Copy Compact @ Transcript**。首次使用会要求确认读取该会话正文；随后 ChatAnchor 会在系统临时目录生成一个精简 Markdown，并复制 `@<compact-transcript.md>`，可直接粘贴给另一个 agent。精简文件是提取式摘要，会优先保留初始目标、最近请求、最近结果和受限长度的工具摘要；文件末尾会列出省略和截断统计。如果原始会话格式无法识别，且 OpenCode fallback 也不可用，ChatAnchor 会提示失败而不是复制空文件。
+8. **跨 agent 迁移上下文**：右键历史会话选择 **Copy Compact @ Transcript**。首次使用会要求确认读取会话正文；随后 ChatAnchor 会生成本地精简 Markdown 并复制 `@path`，可直接粘贴给另一个 agent。
 
 ## 链接管理示例
 
-日常整理列表时，请使用 **Hide Conversation**。只有当会话和项目的归属关系错了，才需要使用链接管理：
+日常整理列表时用 `Hide Conversation`。只有当会话和项目的归属关系错了，才需要打开链接管理。
 
-- **恢复链接**：某个旧会话没有自动出现在当前项目下。点击标题栏放大镜 **Find Old Conversations**，选择建议会话后确认 **Link conversation**。
-- **恢复被忽略的会话**：之前移除错了。点击 **Find Old Conversations**，选择 **Review ignored conversations...**，再重新链接。
-- **移动链接**：会话被连到错误项目。右键该会话，选择 **Manage Conversation Link...** → **Move Link to Another Project**。
-- **移除并忽略链接**：会话不属于当前项目，且以后也不想自动匹配回来。右键该会话，选择 **Manage Conversation Link...** → **Remove Link and Ignore for This Project**。
+<details>
+<summary>什么时候使用链接管理？</summary>
+
+- 恢复链接：旧会话没有自动出现在当前项目下。点击标题栏放大镜 `Find Old Conversations`，选择建议会话后确认 `Link conversation`。
+- 恢复被忽略的会话：之前移除错了。打开 `Find Old Conversations`，选择 `Review ignored conversations...`，再重新链接。
+- 移动链接：会话被连到错误项目。右键该会话，选择 `Manage Conversation Link...` -> `Move Link to Another Project`。
+- 移除并忽略链接：会话不属于当前项目，且以后也不想自动匹配回来。右键该会话，选择 `Manage Conversation Link...` -> `Remove Link and Ignore for This Project`。
+
+</details>
 
 ## 本地数据与隐私
 
-ChatAnchor 完全在本机运行：默认只读取会话元数据（标题、时间、工作目录、Git 信息等），不读取消息正文，不上传任何数据，也不提供遥测。只有在显式设置项目并授权后才会扫描。自定义描述、隐藏状态和项目链接只写入本机 ChatAnchor registry，不会修改 Codex、Cursor 或 OpenCode 的原始会话数据。只有当你显式点击 **Export OpenCode Conversation for @** 时，ChatAnchor 才会调用 `opencode export` 写出一个本地 JSON；如果 CLI 输出不完整，它会只读 `opencode.db` 中该会话的消息行生成 fallback JSON。该文件可能包含完整会话历史，并且同一会话重复导出会覆盖同一路径。只有当你显式点击 **Copy Compact @ Transcript** 并首次确认后，ChatAnchor 才会读取对应会话正文，生成本地临时 Markdown；不会上传，也不会修改原始 transcript。
+ChatAnchor 完全在本机运行。默认只读取会话元数据（标题、时间、工作目录、Git 信息等），不读取消息正文，不上传任何数据，也不提供遥测；只有在显式设置项目并授权后才会扫描。
+
+自定义描述、隐藏状态和项目链接只写入本机 ChatAnchor registry，不会修改 Codex、Cursor 或 OpenCode 的原始会话数据。只有当你显式执行 **Export OpenCode Conversation for @** 或 **Copy Compact @ Transcript** 时，ChatAnchor 才会读取或写出本地会话内容文件；这些文件仍保留在本机。
 
 ## 未来规划
 

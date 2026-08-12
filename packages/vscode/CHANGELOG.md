@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Streamline the GitHub and Marketplace README feature, link-management, and
+  privacy sections so advanced details are shorter and easier to scan.
+
 ## 1.0.9
 
 - Add ChatAnchor entry points for starting new Codex, Cursor, and OpenCode
