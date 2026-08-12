@@ -17,16 +17,17 @@ pnpm monorepo (pnpm 10.13.1, Node >=22), two packages:
 
 - **Branding**: the extension's display name is **ChatAnchor** (formerly ThreadRelink), but the Marketplace extension ID (`ascendho.threadrelink`), package names, command/setting/view IDs, env vars (`THREADRELINK_*`), and data paths (`~/.threadrelink`, `.threadrelink/project.json`) intentionally keep the old name for compatibility.
 - **Core must be rebuilt for the vscode package to see changes.** Typecheck uses `tsconfig.base.json` paths (`@threadrelink/core` → `packages/core/src/index.ts`), but esbuild and vitest resolve the workspace symlink to `packages/core/dist/`. After editing core, run `pnpm --filter @threadrelink/core build` before vscode tests/build, or just run root `pnpm check`.
-- **Registry schema is versioned** (`REGISTRY_SCHEMA_VERSION` in `packages/core/src/registry.ts`, currently 4). Older versions auto-migrate forward; writes make the registry unreadable by older extension versions. Any schema change needs migration logic, not just a bump.
+- **Registry schema is versioned** (`REGISTRY_SCHEMA_VERSION` in `packages/core/src/types.ts`, currently 5). Older versions auto-migrate forward; writes make the registry unreadable by older extension versions. Any schema change needs migration logic, not just a bump.
 - **Version bumps touch 5 places** (enforced by `pnpm check:release-version vX.Y.Z`): root `package.json`, both package manifests, the hardcoded `version: "X.Y.Z"` client-info string in `packages/core/src/codex.ts`, and a `## X.Y.Z` heading in `packages/vscode/CHANGELOG.md`.
 - Publishing is automated: pushing a GitHub Release runs `marketplace-publish.yml` (version check → `pnpm check` → VSIX upload → Marketplace publish via Azure OIDC). Don't bump versions casually.
+- **Docs ship through two surfaces**: root `README.md` / `README_EN.md` are for GitHub, while `packages/vscode/README.md` is bundled into the Marketplace VSIX. User-visible feature, command, setting, privacy/data-flow, and release changes must update the relevant README(s), `packages/vscode/package.json` walkthrough/manifest text, and changelog. Marketplace README changes require a new extension version/release; updating only `main` is not enough.
 
 ## Conventions
 
 - ESLint requires `import type` for type-only imports (`@typescript-eslint/consistent-type-imports`); unused vars must be prefixed with `_`.
 - ESM throughout; core imports its own modules with `.js` suffixes (NodeNext-style), e.g. `from "./errors.js"`.
 - Core talks to Codex via a local app-server subprocess (JSON-RPC over stdio, spawned via `codex app-server`); Cursor metadata is read from `~/.cursor`; OpenCode metadata is read from the local `opencode.db` (XDG-style `~/.local/share/opencode`) via `node:sqlite` read-only. Env overrides: `THREADRELINK_HOME`, `THREADRELINK_CODEX_PATH` (legacy `REPORECALL_CODEX_PATH` still accepted), `CURSOR_HOME`, `THREADRELINK_OPENCODE_HOME`, `THREADRELINK_OPENCODE_PATH`.
-- OpenCode sessions have no standalone file (rows in `opencode.db`), so Reveal/Copy @ Path is hidden for them (menu when-clauses in `package.json`). OpenCode resume (`opencode --session <id>`) only works while the session's original directory exists — after a rename it fails upstream; the extension shows a guidance error. Don't work around it by editing `opencode.db`.
+- OpenCode sessions have no standalone file (rows in `opencode.db`), so Reveal/Copy @ Path is hidden for them (menu when-clauses in `package.json`). OpenCode resume runs `opencode <project-path> --session <id>` from the current ChatAnchor project path. Don't work around OpenCode limitations by editing `opencode.db`.
 
 ## Hard constraints (privacy)
 

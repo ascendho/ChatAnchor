@@ -1,6 +1,6 @@
 {
   "name": "threadrelink-monorepo",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "private": true,
   "description": "A VS Code extension that keeps AI coding agent conversations connected to their projects after folders are renamed or moved.",
   "license": "GPL-3.0-only",

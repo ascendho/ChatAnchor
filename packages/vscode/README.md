@@ -18,6 +18,8 @@ ChatAnchor is a local VS Code extension: after a project folder is renamed or mo
 - Automatically reconnects after a project is renamed or moved, based on conservative evidence such as Git remote + commit and path aliases — never links by directory name alone
 - One-click resume of the original conversation: `codex resume --cd`, `agent --resume --workspace`, `opencode <new-path> --session`
 - Copy @ Path / Reveal conversation files (Codex, Cursor)
+- Custom conversation descriptions for long, noisy, or generic titles
+- Hide conversations you do not need right now, show hidden items on demand, and unhide them later
 - Find Old Conversations to recover history; remove, move, ignore, and restore links
 - Runs entirely locally — no telemetry, nothing uploaded
 
@@ -48,9 +50,11 @@ ChatAnchor is a local VS Code extension: after a project folder is renamed or mo
 
 6. **Resume the original conversation**: hover a conversation row and click the continue icon. ChatAnchor opens an integrated terminal running `codex resume --cd <new-path> <thread-id>`, `agent --resume <chat-id> --workspace <new-path>`, or `opencode <new-path> --session <id>` at the new path.
 
+7. **Organize the list**: right-click a conversation to edit its description or hide it. The title bar can temporarily show hidden conversations, and can unhide all hidden conversations in the current project.
+
 ## Local data and privacy
 
-ChatAnchor runs entirely on your machine: it only reads conversation metadata (title, timestamps, working directory, Git info), never reads message bodies, uploads nothing, and has no telemetry. Scanning only happens after you explicitly set up a project and grant consent.
+ChatAnchor runs entirely on your machine: it only reads conversation metadata (title, timestamps, working directory, Git info), never reads message bodies, uploads nothing, and has no telemetry. Scanning only happens after you explicitly set up a project and grant consent. Custom descriptions, hidden state, and project links are stored only in the local ChatAnchor registry; ChatAnchor does not modify the original Codex, Cursor, or OpenCode conversation data.
 
 ## Roadmap
 

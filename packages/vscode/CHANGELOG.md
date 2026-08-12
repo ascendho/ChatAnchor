@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.7
+
+- Update the GitHub and Marketplace READMEs for custom descriptions,
+  hide/unhide controls, and the local-only storage model.
+- Refresh user-facing setup text so it describes Codex, Cursor, and OpenCode
+  together instead of Codex-only workflows.
+
 ## 1.0.6
 
 - Add custom conversation descriptions for Codex, Cursor, and OpenCode

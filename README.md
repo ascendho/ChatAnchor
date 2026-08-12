@@ -18,6 +18,8 @@ ChatAnchor 是一个本地 VS Code 扩展：项目文件夹改名或移动后，
 - 项目改名或移动后自动重连：基于 Git remote + commit、路径别名等保守证据，绝不只凭目录名关联
 - 一键恢复原会话：`codex resume --cd`、`agent --resume --workspace`、`opencode <new-path> --session`
 - Copy @ Path / Reveal 会话文件（Codex、Cursor）
+- 自定义会话描述，让侧边栏里的长标题或泛化标题更容易识别
+- 隐藏暂时不需要的会话，并可随时显示隐藏项或一键取消隐藏
 - Find Old Conversations 找回历史会话；支持移除、移动、忽略和恢复链接
 - 完全本地运行、无遥测、不上传任何数据
 
@@ -48,9 +50,11 @@ ChatAnchor 是一个本地 VS Code 扩展：项目文件夹改名或移动后，
 
 6. **继续原会话**：悬停会话行并点击继续图标，ChatAnchor 会在新路径打开 `codex resume --cd <new-path> <thread-id>`、`agent --resume <chat-id> --workspace <new-path>` 或 `opencode <new-path> --session <id>` 的集成终端。
 
+7. **整理会话列表**：右键会话可编辑描述或隐藏会话；标题栏可临时显示隐藏项，也可以一键取消隐藏当前项目的所有隐藏会话。
+
 ## 本地数据与隐私
 
-ChatAnchor 完全在本机运行：只读取会话元数据（标题、时间、工作目录、Git 信息等），不读取消息正文，不上传任何数据，也不提供遥测。只有在显式设置项目并授权后才会扫描。
+ChatAnchor 完全在本机运行：只读取会话元数据（标题、时间、工作目录、Git 信息等），不读取消息正文，不上传任何数据，也不提供遥测。只有在显式设置项目并授权后才会扫描。自定义描述、隐藏状态和项目链接只写入本机 ChatAnchor registry，不会修改 Codex、Cursor 或 OpenCode 的原始会话数据。
 
 ## 未来规划
 

@@ -2,7 +2,7 @@
   "name": "threadrelink",
   "displayName": "ChatAnchor",
   "description": "A VS Code extension that keeps AI coding agent conversations connected to their projects after folders are renamed or moved.",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "icon": "resources/threadrelink.png",
   "publisher": "ascendho",
   "repository": {
@@ -42,7 +42,7 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": false,
-      "description": "ChatAnchor starts a local Codex process and reads local conversation metadata."
+      "description": "ChatAnchor starts local agent CLIs and reads local Codex, Cursor, and OpenCode conversation metadata."
     }
   },
   "contributes": {
@@ -190,8 +190,8 @@
     "walkthroughs": [
       {
         "id": "threadrelink.gettingStarted",
-        "title": "Keep Codex conversations after a project rename",
-        "description": "Initialize once, then resume the same local Codex thread from any renamed or moved path.",
+        "title": "Keep AI conversations after a project rename",
+        "description": "Initialize once, then resume the same local Codex, Cursor, or OpenCode thread from any renamed or moved path.",
         "steps": [
           {
             "id": "threadrelink.gettingStarted.openView",
@@ -232,10 +232,10 @@
           {
             "id": "threadrelink.gettingStarted.reopen",
             "title": "Rename and reopen the folder",
-            "description": "Close the Codex terminal, rename the folder outside VS Code, reopen the new path, then refresh ChatAnchor.\n[Refresh conversations](command:threadrelink.refresh)",
+            "description": "Close any active agent terminal, rename the folder outside VS Code, reopen the new path, then refresh ChatAnchor.\n[Refresh conversations](command:threadrelink.refresh)",
             "media": {
               "image": "media/guide/04-resume-after-rename.png",
-              "altText": "A renamed project with its linked Codex conversation"
+              "altText": "A renamed project with linked AI coding conversations"
             },
             "completionEvents": [
               "onCommand:threadrelink.refresh"
@@ -378,7 +378,7 @@
         "threadrelink.autoSync": {
           "type": "boolean",
           "default": true,
-          "description": "Refresh local Codex and Cursor conversation metadata when an explicitly set-up, trusted project opens, after consent."
+          "description": "Refresh local Codex, Cursor, and OpenCode conversation metadata when an explicitly set-up, trusted project opens, after consent."
         },
         "threadrelink.registryHome": {
           "type": "string",
