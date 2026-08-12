@@ -363,7 +363,7 @@ implements vscode.TreeDataProvider<ThreadRelinkTreeNode>, vscode.Disposable {
       if (probe.state !== "ready") {
         const detail = probe.state === "parent-choice-required"
           ? `This folder is inside ${probe.gitRoot}.`
-          : "ThreadRelink is off for this workspace.";
+          : "ChatAnchor is off for this workspace.";
         return [
           {
             kind: "message",

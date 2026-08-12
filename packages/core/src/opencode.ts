@@ -1,10 +1,13 @@
+import { createWriteStream } from "node:fs";
 import { spawn } from "node:child_process";
 import { execFile } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { promisify } from "node:util";
-import { access } from "node:fs/promises";
-import { homedir } from "node:os";
+import { access, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { finished } from "node:stream/promises";
 import { ThreadRelinkError, errorMessage } from "./errors.js";
 import { normalizeAbsolutePath } from "./path.js";
 import type { ThreadMetadata } from "./types.js";
@@ -39,6 +42,289 @@ export function buildOpenCodeResumeArgs(
   return projectPath
     ? [normalizeAbsolutePath(projectPath), "--session", sessionId]
     : ["--session", sessionId];
+}
+
+export function buildOpenCodeNewSessionArgs(projectPath: string): string[] {
+  return [normalizeAbsolutePath(projectPath)];
+}
+
+export type OpenCodeExportShell = "posix" | "powershell";
+
+function safeOpenCodeExportFilename(sessionId: string): string {
+  const stem = sessionId.trim().replace(/[^A-Za-z0-9_.-]+/gu, "_")
+    .replace(/^_+|_+$/gu, "")
+    .slice(0, 80);
+  return `chatanchor-opencode-${stem || "session"}.json`;
+}
+
+function quotePosix(value: string): string {
+  return `'${value.replace(/'/gu, "'\\''")}'`;
+}
+
+function quotePowerShell(value: string): string {
+  return `'${value.replace(/'/gu, "''")}'`;
+}
+
+/**
+ * Legacy helper for building a user-run OpenCode export command.
+ * The VS Code UI now calls exportOpenCodeSessionToTempFile instead.
+ */
+export function buildOpenCodeExportCommand(
+  sessionId: string,
+  options: {
+    openCodePath?: string;
+    shell?: OpenCodeExportShell;
+  } = {},
+): string {
+  const id = sessionId.trim();
+  if (!id) {
+    throw new ThreadRelinkError(
+      "OPENCODE_EXPORT_COMMAND_INVALID_SESSION",
+      "An OpenCode session id is required to build an export command.",
+    );
+  }
+  const executable = resolveOpenCodePath(options.openCodePath);
+  const filename = safeOpenCodeExportFilename(id);
+  if (options.shell === "powershell") {
+    return [
+      "$dir = Join-Path ([System.IO.Path]::GetTempPath()) (\"chatanchor-opencode-\" + [guid]::NewGuid().ToString(\"N\"))",
+      "New-Item -ItemType Directory -Force -Path $dir | Out-Null",
+      `$file = Join-Path $dir ${quotePowerShell(filename)}`,
+      `& ${quotePowerShell(executable)} export ${quotePowerShell(id)} > $file`,
+      "Write-Output \"@$file\"",
+    ].join("; ");
+  }
+  return [
+    "dir=\"$(mktemp -d \"${TMPDIR:-/tmp}/chatanchor-opencode.XXXXXX\")\"",
+    `file="$dir/${filename}"`,
+    `${quotePosix(executable)} export ${quotePosix(id)} > "$file"`,
+    "printf '@%s\\n' \"$file\"",
+  ].join("; ");
+}
+
+export interface OpenCodeExportResult {
+  atPath: string;
+  exportSource: "cli" | "database-fallback";
+  filePath: string;
+}
+
+function parseOpenCodeRowJson(
+  value: unknown,
+  fallbackKey: "data" | "text",
+): Record<string, unknown> {
+  if (typeof value !== "string") {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : { [fallbackKey]: parsed };
+  } catch {
+    return { [fallbackKey]: value };
+  }
+}
+
+function readOpenCodeExportJsonFromDatabase(
+  sessionId: string,
+  openCodeHome?: string,
+): string {
+  const databasePath = join(resolveOpenCodeHome(openCodeHome), "opencode.db");
+  const database = new DatabaseSync(databasePath, { readOnly: true });
+  try {
+    const session = database.prepare("SELECT * FROM session WHERE id = ?")
+      .get(sessionId) as Record<string, unknown> | undefined;
+    if (!session) {
+      throw new ThreadRelinkError(
+        "OPENCODE_EXPORT_FALLBACK_UNAVAILABLE",
+        `Could not find OpenCode session ${sessionId} in the local database fallback.`,
+      );
+    }
+
+    const messageRows = database.prepare(
+      `SELECT id, time_created, time_updated, data
+       FROM message
+       WHERE session_id = ?
+       ORDER BY time_created, id`,
+    ).all(sessionId) as Array<Record<string, unknown>>;
+
+    const partRows = database.prepare(
+      `SELECT id, message_id, session_id, time_created, time_updated, data
+       FROM part
+       WHERE session_id = ?
+       ORDER BY time_created, id`,
+    ).all(sessionId) as Array<Record<string, unknown>>;
+
+    if (messageRows.length === 0 && partRows.length === 0) {
+      throw new ThreadRelinkError(
+        "OPENCODE_EXPORT_FALLBACK_UNAVAILABLE",
+        `OpenCode session ${sessionId} has no messages in the local database fallback.`,
+      );
+    }
+
+    const partsByMessage = new Map<string, Array<Record<string, unknown>>>();
+    for (const row of partRows) {
+      const messageId = typeof row.message_id === "string"
+        ? row.message_id
+        : "";
+      if (!messageId) {
+        continue;
+      }
+      const parsed = parseOpenCodeRowJson(row.data, "text");
+      const part = {
+        id: row.id,
+        messageID: row.message_id,
+        sessionID: row.session_id,
+        timeCreated: row.time_created,
+        timeUpdated: row.time_updated,
+        ...parsed,
+      };
+      const existing = partsByMessage.get(messageId);
+      if (existing) {
+        existing.push(part);
+      } else {
+        partsByMessage.set(messageId, [part]);
+      }
+    }
+
+    const messages = messageRows.map((row) => {
+      const parsed = parseOpenCodeRowJson(row.data, "data");
+      const id = typeof row.id === "string" ? row.id : "";
+      return {
+        id: row.id,
+        info: {
+          id: row.id,
+          sessionID: sessionId,
+          timeCreated: row.time_created,
+          timeUpdated: row.time_updated,
+          ...parsed,
+        },
+        parts: partsByMessage.get(id) ?? [],
+      };
+    });
+
+    return JSON.stringify({
+      exportSource: "opencode-db-fallback",
+      info: session,
+      messages,
+    }, null, 2);
+  } finally {
+    database.close();
+  }
+}
+
+export async function exportOpenCodeSessionToTempFile(
+  sessionId: string,
+  options: {
+    baseDir?: string;
+    openCodeHome?: string;
+    openCodePath?: string;
+  } = {},
+): Promise<OpenCodeExportResult> {
+  const id = sessionId.trim();
+  if (!id) {
+    throw new ThreadRelinkError(
+      "OPENCODE_EXPORT_INVALID_SESSION",
+      "An OpenCode session id is required to export a conversation.",
+    );
+  }
+
+  const baseDir = normalizeAbsolutePath(options.baseDir ?? tmpdir());
+  const exportDir = join(baseDir, "chatanchor-opencode-exports");
+  await mkdir(exportDir, { recursive: true });
+  const filename = safeOpenCodeExportFilename(id);
+  const filePath = join(exportDir, filename);
+  const tempPath = join(
+    exportDir,
+    `${filename}.${process.pid}.${randomUUID()}.tmp`,
+  );
+  const output = createWriteStream(tempPath, { encoding: "utf8" });
+  let exportSource: OpenCodeExportResult["exportSource"] = "cli";
+  let stderr = "";
+
+  const child = spawn(
+    resolveOpenCodePath(options.openCodePath),
+    ["export", id],
+    {
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+    },
+  );
+  child.stderr.on("data", (chunk: Buffer | string) => {
+    stderr = `${stderr}${chunk.toString()}`.slice(-8_192);
+  });
+  child.stdout.pipe(output);
+
+  const outputFinished = finished(output);
+  const exit = new Promise<void>((resolve, reject) => {
+    child.once("error", (error) => {
+      output.destroy();
+      reject(
+        new ThreadRelinkError(
+          "OPENCODE_EXPORT_FAILED",
+          `Could not run OpenCode export: ${errorMessage(error)}`,
+          { cause: error },
+        ),
+      );
+    });
+    child.once("exit", (code, signal) => {
+      if (signal) {
+        output.destroy();
+        reject(
+          new ThreadRelinkError(
+            "OPENCODE_EXPORT_INTERRUPTED",
+            `OpenCode export was interrupted by ${signal}.`,
+          ),
+        );
+        return;
+      }
+      if (code !== 0) {
+        output.destroy();
+        reject(
+          new ThreadRelinkError(
+            "OPENCODE_EXPORT_FAILED",
+            `OpenCode export exited with code ${code ?? 1}.${stderr.trim() ? ` ${stderr.trim()}` : ""}`,
+          ),
+        );
+        return;
+      }
+      resolve();
+    });
+  });
+
+  try {
+    await exit;
+    await outputFinished;
+    try {
+      JSON.parse(await readFile(tempPath, "utf8"));
+    } catch (error) {
+      try {
+        const fallbackJson = readOpenCodeExportJsonFromDatabase(
+          id,
+          options.openCodeHome,
+        );
+        await writeFile(tempPath, fallbackJson, "utf8");
+        exportSource = "database-fallback";
+      } catch (fallbackError) {
+        throw new ThreadRelinkError(
+          "OPENCODE_EXPORT_INVALID_JSON",
+          `OpenCode export produced invalid JSON and the local database fallback failed. Try exporting the session again or run "opencode export ${id}" manually to inspect the CLI output. Export parse error: ${errorMessage(error)}. Fallback error: ${errorMessage(fallbackError)}`,
+          { cause: fallbackError },
+        );
+      }
+    }
+    await rename(tempPath, filePath);
+  } catch (error) {
+    output.destroy();
+    await outputFinished.catch(() => undefined);
+    await rm(tempPath, { force: true });
+    throw error;
+  }
+  return {
+    atPath: `@${filePath}`,
+    exportSource,
+    filePath,
+  };
 }
 
 export async function readOpenCodeVersion(

@@ -2,7 +2,7 @@
   "name": "threadrelink",
   "displayName": "ChatAnchor",
   "description": "A VS Code extension that keeps AI coding agent conversations connected to their projects after folders are renamed or moved.",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "icon": "resources/threadrelink.png",
   "publisher": "ascendho",
   "repository": {
@@ -93,6 +93,11 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "threadrelink.startNewSession",
+        "title": "ChatAnchor: Start New Agent Session...",
+        "icon": "$(terminal-new)"
+      },
+      {
         "command": "threadrelink.confirmLink",
         "title": "ChatAnchor: Link Conversation to This Project",
         "icon": "$(link)"
@@ -128,6 +133,11 @@
         "icon": "$(eye)"
       },
       {
+        "command": "threadrelink.noHiddenConversations",
+        "title": "ChatAnchor: No Hidden Conversations",
+        "icon": "$(eye)"
+      },
+      {
         "command": "threadrelink.showHiddenConversations",
         "title": "ChatAnchor: Show Hidden Conversations",
         "icon": "$(eye-closed)"
@@ -151,6 +161,16 @@
         "command": "threadrelink.copyAtPath",
         "title": "ChatAnchor: Copy @ Conversation Path",
         "icon": "$(mention)"
+      },
+      {
+        "command": "threadrelink.exportOpenCodeAtPath",
+        "title": "ChatAnchor: Export OpenCode Conversation for @",
+        "icon": "$(mention)"
+      },
+      {
+        "command": "threadrelink.copyCompactAtPath",
+        "title": "ChatAnchor: Copy Compact @ Transcript",
+        "icon": "$(file-text)"
       },
       {
         "command": "threadrelink.revealLocation",
@@ -248,8 +268,8 @@
           },
           {
             "id": "threadrelink.gettingStarted.resume",
-            "title": "Resume the original conversation",
-            "description": "Hover a conversation and select the continue icon. ChatAnchor opens `codex resume --cd <new-path> <thread-id>`, `agent --resume <chat-id> --workspace <new-path>`, or `opencode <new-path> --session <id>` in an integrated terminal.\n[Resume a conversation](command:threadrelink.resume)",
+            "title": "Resume or start an agent conversation",
+            "description": "Hover a conversation and select the continue icon to resume it at the current project path. Use the title-bar plus button, or a provider group's plus button, to start a fresh Codex, Cursor, or OpenCode session.\n[Resume a conversation](command:threadrelink.resume)",
             "media": {
               "image": "media/guide/05-resumed-terminal.png",
               "altText": "Conversation resumed in an integrated terminal at the new path"
@@ -279,6 +299,11 @@
           "group": "navigation@2"
         },
         {
+          "command": "threadrelink.startNewSession",
+          "when": "view == threadrelink.conversations && threadrelink.hasReadyProject",
+          "group": "navigation@2.5"
+        },
+        {
           "command": "threadrelink.collapseTree",
           "when": "view == threadrelink.conversations && !threadrelink.treeCollapsed",
           "group": "navigation@3"
@@ -287,6 +312,11 @@
           "command": "threadrelink.expandTree",
           "when": "view == threadrelink.conversations && threadrelink.treeCollapsed",
           "group": "navigation@3"
+        },
+        {
+          "command": "threadrelink.noHiddenConversations",
+          "when": "view == threadrelink.conversations && !threadrelink.hasHiddenConversations && !threadrelink.showingHiddenConversations",
+          "group": "navigation@4"
         },
         {
           "command": "threadrelink.showHiddenConversations",
@@ -321,6 +351,11 @@
       ],
       "view/item/context": [
         {
+          "command": "threadrelink.startNewSession",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linked\\.(codex|cursor|opencode)$/",
+          "group": "inline@1"
+        },
+        {
           "command": "threadrelink.resume",
           "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)(\\.hidden)?$/",
           "group": "inline@1"
@@ -331,9 +366,19 @@
           "group": "inline@2"
         },
         {
+          "command": "threadrelink.exportOpenCodeAtPath",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.opencode(\\.hidden)?$/",
+          "group": "inline@2"
+        },
+        {
+          "command": "threadrelink.copyCompactAtPath",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)(\\.hidden)?$/",
+          "group": "manage@3.5"
+        },
+        {
           "command": "threadrelink.revealLocation",
           "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)(\\.hidden)?$/",
-          "group": "inline@3"
+          "group": "manage@3.6"
         },
         {
           "command": "threadrelink.editDescription",

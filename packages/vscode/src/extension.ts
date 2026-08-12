@@ -1,12 +1,18 @@
 import * as vscode from "vscode";
 import {
+  buildCodexNewSessionArgs,
   ThreadRelinkService,
   buildCodexResumeArgs,
+  buildCursorNewSessionArgs,
   buildCursorResumeArgs,
+  buildOpenCodeNewSessionArgs,
   buildOpenCodeResumeArgs,
   errorMessage,
+  exportOpenCodeSessionToTempFile,
   resolveExecutablePath,
   runDoctor,
+  writeCompactTranscriptFromFile,
+  type ConversationProvider,
   type MatchDecision,
   type ProjectProbe,
   type SetupMode,
@@ -37,6 +43,8 @@ import {
 import { hiddenConversationCount } from "./conversation-display.js";
 
 const CONSENT_KEY = "threadrelink.metadataConsent.v1";
+const COMPACT_TRANSCRIPT_CONSENT_KEY =
+  "threadrelink.compactTranscriptConsent.v1";
 const REPAIR_WARNING_PREFIX = "threadrelink.repairWarning.v1";
 
 interface Settings {
@@ -54,6 +62,34 @@ interface RecoveryPick extends vscode.QuickPickItem {
   recoveryKind: "decision" | "ignored" | "search";
   decision?: MatchDecision;
 }
+
+interface AgentProviderPick extends vscode.QuickPickItem {
+  provider: ConversationProvider;
+}
+
+const AGENT_PROVIDER_LABEL: Record<ConversationProvider, string> = {
+  codex: "Codex",
+  cursor: "Cursor",
+  opencode: "OpenCode",
+};
+
+const AGENT_PROVIDER_PICKS: AgentProviderPick[] = [
+  {
+    provider: "codex",
+    label: "Codex",
+    description: "codex --cd <project>",
+  },
+  {
+    provider: "cursor",
+    label: "Cursor",
+    description: "agent --workspace <project>",
+  },
+  {
+    provider: "opencode",
+    label: "OpenCode",
+    description: "opencode <project>",
+  },
+];
 
 function explicitSetting<T>(
   config: vscode.WorkspaceConfiguration,
@@ -225,6 +261,25 @@ export async function activate(
   const hasConsent = (): boolean =>
     context.globalState.get<boolean>(CONSENT_KEY, false);
 
+  const hasCompactTranscriptConsent = (): boolean =>
+    context.globalState.get<boolean>(COMPACT_TRANSCRIPT_CONSENT_KEY, false);
+
+  const ensureCompactTranscriptConsent = async (): Promise<boolean> => {
+    if (hasCompactTranscriptConsent()) {
+      return true;
+    }
+    const action = await vscode.window.showWarningMessage(
+      "ChatAnchor will read this conversation's local transcript and write a compact Markdown copy in your system temporary directory. Nothing is uploaded.",
+      { modal: true },
+      "Generate Compact Transcript",
+    );
+    if (action !== "Generate Compact Transcript") {
+      return false;
+    }
+    await context.globalState.update(COMPACT_TRANSCRIPT_CONSENT_KEY, true);
+    return true;
+  };
+
   const setTreeCollapsedContext = async (collapsed: boolean): Promise<void> => {
     await vscode.commands.executeCommand(
       "setContext",
@@ -236,6 +291,12 @@ export async function activate(
   const updateContexts = async (
     workspaces = provider.getWorkspaces(),
   ): Promise<void> => {
+    const hasHiddenConversations = provider.hasHiddenConversations();
+    let showingHiddenConversations = provider.isShowingHiddenConversations();
+    if (!hasHiddenConversations && showingHiddenConversations) {
+      provider.setShowHiddenConversations(false);
+      showingHiddenConversations = false;
+    }
     await Promise.all([
       vscode.commands.executeCommand(
         "setContext",
@@ -257,12 +318,12 @@ export async function activate(
       vscode.commands.executeCommand(
         "setContext",
         "threadrelink.hasHiddenConversations",
-        provider.hasHiddenConversations(),
+        hasHiddenConversations,
       ),
       vscode.commands.executeCommand(
         "setContext",
         "threadrelink.showingHiddenConversations",
-        provider.isShowingHiddenConversations(),
+        showingHiddenConversations,
       ),
       setTreeCollapsedContext(provider.isTreeCollapsed()),
     ]);
@@ -290,8 +351,16 @@ export async function activate(
   };
 
   const showHiddenConversations = async (): Promise<void> => {
+    if (!provider.hasHiddenConversations()) {
+      void vscode.window.showInformationMessage("No hidden conversations.");
+      return;
+    }
     provider.setShowHiddenConversations(true);
     await updateContexts();
+  };
+
+  const noHiddenConversations = (): void => {
+    void vscode.window.showInformationMessage("No hidden conversations.");
   };
 
   const hideHiddenConversations = async (): Promise<void> => {
@@ -305,6 +374,60 @@ export async function activate(
       walkthroughTarget(context.extension.id),
       false,
     );
+  };
+
+  const chooseReadyWorkspace = async (
+    placeHolder: string,
+    requestedPath?: string,
+  ): Promise<WorkspaceResult | undefined> => {
+    const ready = provider.getWorkspaces().filter((workspace) =>
+      workspace.probe?.state === "ready"
+    );
+    if (requestedPath) {
+      const requested = ready.find((workspace) =>
+        workspace.path === requestedPath
+      );
+      if (!requested) {
+        void vscode.window.showInformationMessage(
+          "Set up this project before starting a new agent session.",
+        );
+      }
+      return requested;
+    }
+    if (ready.length === 0) {
+      void vscode.window.showInformationMessage(
+        "Set up a ChatAnchor project before starting a new agent session.",
+      );
+      return undefined;
+    }
+    if (ready.length === 1) {
+      return ready[0];
+    }
+    const selected = await vscode.window.showQuickPick(
+      ready.map((workspace) => ({
+        label: workspace.name,
+        description: workspace.probe?.project?.kind === "git"
+          ? "Git project"
+          : "directory",
+        detail: workspace.path,
+        workspace,
+      })),
+      {
+        placeHolder,
+        matchOnDescription: true,
+        matchOnDetail: true,
+        ignoreFocusOut: true,
+      },
+    );
+    return selected?.workspace;
+  };
+
+  const chooseAgentProvider = async (): Promise<ConversationProvider | undefined> => {
+    const selected = await vscode.window.showQuickPick(AGENT_PROVIDER_PICKS, {
+      placeHolder: "Choose an agent CLI to start",
+      ignoreFocusOut: true,
+    });
+    return selected?.provider;
   };
 
   const ensureConsent = async (): Promise<boolean> => {
@@ -926,6 +1049,201 @@ export async function activate(
     }
   };
 
+  const startNewAgentSession = async (
+    node?: ThreadRelinkTreeNode,
+  ): Promise<void> => {
+    if (!vscode.workspace.isTrusted) {
+      void vscode.window.showWarningMessage(
+        "Trust this workspace before ChatAnchor can start an agent CLI.",
+      );
+      return;
+    }
+    const workspace = node?.kind === "category"
+      ? await chooseReadyWorkspace(
+          "Choose a project for the new agent session",
+          node.workspace.path,
+        )
+      : await chooseReadyWorkspace(
+          "Choose a project for the new agent session",
+        );
+    if (!workspace) {
+      return;
+    }
+    const providerId = node?.kind === "category"
+      ? node.provider
+      : await chooseAgentProvider();
+    if (!providerId) {
+      return;
+    }
+
+    const settings = readSettings();
+    let shellPath: string | null;
+    let shellArgs: string[];
+    if (providerId === "cursor") {
+      shellPath = resolveExecutablePath(settings.agentPath);
+      shellArgs = buildCursorNewSessionArgs(workspace.path);
+    } else if (providerId === "opencode") {
+      shellPath = resolveExecutablePath(settings.openCodePath);
+      shellArgs = buildOpenCodeNewSessionArgs(workspace.path);
+    } else {
+      shellPath = resolveExecutablePath(settings.codexPath);
+      shellArgs = buildCodexNewSessionArgs(workspace.path);
+    }
+
+    if (!shellPath) {
+      const settingName = providerId === "cursor"
+        ? "threadrelink.agentPath"
+        : providerId === "opencode"
+          ? "threadrelink.opencodePath"
+          : "threadrelink.codexPath";
+      const configuredPath = providerId === "cursor"
+        ? settings.agentPath
+        : providerId === "opencode"
+          ? settings.openCodePath
+          : settings.codexPath;
+      void vscode.window.showErrorMessage(
+        `ChatAnchor: Could not find the "${configuredPath}" executable on PATH. Set "${settingName}" to its absolute path.`,
+      );
+      return;
+    }
+
+    const terminal = vscode.window.createTerminal({
+      name: `ChatAnchor: New ${AGENT_PROVIDER_LABEL[providerId]}`,
+      shellPath,
+      shellArgs,
+      cwd: workspace.path,
+      iconPath: new vscode.ThemeIcon("terminal"),
+    });
+    terminal.show();
+  };
+
+  const exportOpenCodeAtPath = async (
+    node?: ThreadRelinkTreeNode,
+  ): Promise<void> => {
+    const selected = node?.kind === "thread"
+      ? node
+      : await chooseThread(
+          provider.allLinked().filter((candidate) =>
+            candidate.kind === "thread"
+            && candidate.decision.thread.provider === "opencode"
+          ),
+          "Choose an OpenCode conversation to export",
+        );
+    if (
+      !selected
+      || selected.kind !== "thread"
+      || selected.decision.thread.provider !== "opencode"
+    ) {
+      return;
+    }
+    try {
+      const settings = readSettings();
+      const openCodeExecutable = resolveExecutablePath(settings.openCodePath);
+      if (!openCodeExecutable) {
+        void vscode.window.showErrorMessage(
+          `ChatAnchor: Could not find the "${settings.openCodePath}" executable on PATH. Set "threadrelink.opencodePath" to its absolute path.`,
+        );
+        return;
+      }
+      const result = await exportOpenCodeSessionToTempFile(
+        selected.decision.thread.id,
+        {
+          openCodeHome: settings.openCodeHome,
+          openCodePath: openCodeExecutable,
+        },
+      );
+      await vscode.env.clipboard.writeText(result.atPath);
+      const fallbackNote = result.exportSource === "database-fallback"
+        ? " OpenCode CLI export was incomplete, so ChatAnchor used the local database fallback."
+        : "";
+      const action = await vscode.window.showInformationMessage(
+        `Exported “${conversationLabel(selected.decision)}” and copied ${result.atPath}. The JSON may include conversation history.${fallbackNote}`,
+        "Reveal in OS",
+      );
+      if (action === "Reveal in OS") {
+        await vscode.commands.executeCommand(
+          "revealFileInOS",
+          vscode.Uri.file(result.filePath),
+        );
+      }
+    } catch (error) {
+      void vscode.window.showErrorMessage(`ChatAnchor: ${errorMessage(error)}`);
+    }
+  };
+
+  const copyCompactAtPath = async (
+    node?: ThreadRelinkTreeNode,
+  ): Promise<void> => {
+    const selected = node?.kind === "thread"
+      ? node
+      : await chooseThread(
+          provider.allLinked(),
+          "Choose a conversation to compact",
+        );
+    if (!selected || selected.kind !== "thread") {
+      return;
+    }
+    if (!(await ensureCompactTranscriptConsent())) {
+      return;
+    }
+
+    try {
+      const thread = selected.decision.thread;
+      const settings = readSettings();
+      let sourcePath: string;
+      let usedOpenCodeExportFallback = false;
+      if (thread.provider === "opencode") {
+        const openCodeExecutable = resolveExecutablePath(settings.openCodePath);
+        if (!openCodeExecutable) {
+          void vscode.window.showErrorMessage(
+            `ChatAnchor: Could not find the "${settings.openCodePath}" executable on PATH. Set "threadrelink.opencodePath" to its absolute path.`,
+          );
+          return;
+        }
+        const exportResult = await exportOpenCodeSessionToTempFile(
+          thread.id,
+          {
+            openCodeHome: settings.openCodeHome,
+            openCodePath: openCodeExecutable,
+          },
+        );
+        sourcePath = exportResult.filePath;
+        usedOpenCodeExportFallback =
+          exportResult.exportSource === "database-fallback";
+      } else {
+        sourcePath = await makeService().resolveConversationFilePath(
+          thread.provider,
+          thread.id,
+          thread.cwd,
+        );
+      }
+
+      const result = await writeCompactTranscriptFromFile({
+        provider: thread.provider,
+        threadId: thread.id,
+        filePath: sourcePath,
+        title: conversationLabel(selected.decision),
+        cwd: thread.cwd,
+      });
+      await vscode.env.clipboard.writeText(result.atPath);
+      const fallbackNote = usedOpenCodeExportFallback
+        ? " OpenCode CLI export was incomplete, so ChatAnchor used the local database fallback first."
+        : "";
+      const action = await vscode.window.showInformationMessage(
+        `Copied ${result.atPath}. Paste it into any agent to carry over compact context.${fallbackNote}`,
+        "Reveal in OS",
+      );
+      if (action === "Reveal in OS") {
+        await vscode.commands.executeCommand(
+          "revealFileInOS",
+          vscode.Uri.file(result.filePath),
+        );
+      }
+    } catch (error) {
+      void vscode.window.showErrorMessage(`ChatAnchor: ${errorMessage(error)}`);
+    }
+  };
+
   const warnAboutLegacyParent = async (
     workspaces: WorkspaceResult[],
   ): Promise<void> => {
@@ -1007,6 +1325,10 @@ export async function activate(
       expandTree,
     ),
     vscode.commands.registerCommand(
+      "threadrelink.noHiddenConversations",
+      noHiddenConversations,
+    ),
+    vscode.commands.registerCommand(
       "threadrelink.showHiddenConversations",
       showHiddenConversations,
     ),
@@ -1057,6 +1379,22 @@ export async function activate(
     vscode.commands.registerCommand(
       "threadrelink.manageLink",
       manageThreadLink,
+    ),
+    vscode.commands.registerCommand(
+      "threadrelink.startNewSession",
+      startNewAgentSession,
+    ),
+    vscode.commands.registerCommand(
+      "threadrelink.exportOpenCodeAtPath",
+      exportOpenCodeAtPath,
+    ),
+    vscode.commands.registerCommand(
+      "threadrelink.copyOpenCodeExportCommand",
+      exportOpenCodeAtPath,
+    ),
+    vscode.commands.registerCommand(
+      "threadrelink.copyCompactAtPath",
+      copyCompactAtPath,
     ),
     vscode.commands.registerCommand(
       "threadrelink.move",
@@ -1323,10 +1661,15 @@ export async function activate(
     "editDescription",
     "hideConversation",
     "showConversation",
+    "noHiddenConversations",
     "showHiddenConversations",
     "hideHiddenConversations",
     "restoreHiddenConversations",
     "manageLink",
+    "startNewSession",
+    "exportOpenCodeAtPath",
+    "copyOpenCodeExportCommand",
+    "copyCompactAtPath",
     "resume",
     "copyAtPath",
     "revealLocation",

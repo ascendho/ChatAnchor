@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildCodexNewSessionArgs,
   buildCodexResumeArgs,
   resolveCodexPath,
 } from "../src/codex.js";
@@ -16,6 +17,15 @@ describe("Codex CLI", () => {
       "--cd",
       "/Users/ascendho/Downloads/repo/ChatAnchor",
       "019feff8-9bd4-74b2-bb54-1d8e38be037b",
+    ]);
+  });
+
+  it("builds new session args for codex --cd", () => {
+    expect(buildCodexNewSessionArgs(
+      "/Users/ascendho/Downloads/repo/ChatAnchor",
+    )).toEqual([
+      "--cd",
+      "/Users/ascendho/Downloads/repo/ChatAnchor",
     ]);
   });
 });

@@ -107,16 +107,26 @@ describe("VS Code extension manifest", () => {
     expect(commandIds).toContain("threadrelink.editDescription");
     expect(commandIds).toContain("threadrelink.hideConversation");
     expect(commandIds).toContain("threadrelink.showConversation");
+    expect(commandIds).toContain("threadrelink.noHiddenConversations");
     expect(commandIds).toContain("threadrelink.showHiddenConversations");
     expect(commandIds).toContain("threadrelink.hideHiddenConversations");
     expect(commandIds).toContain("threadrelink.restoreHiddenConversations");
     expect(commandIds).toContain("threadrelink.copyAtPath");
+    expect(commandIds).toContain("threadrelink.exportOpenCodeAtPath");
+    expect(commandIds).toContain("threadrelink.copyCompactAtPath");
+    expect(commandIds).toContain("threadrelink.startNewSession");
     expect(commandIds).toContain("threadrelink.revealLocation");
     expect(commandIds).toContain("threadrelink.collapseTree");
     expect(commandIds).toContain("threadrelink.expandTree");
     expect(commandById.get("threadrelink.showConversation")).toEqual(
       expect.objectContaining({
         title: "ChatAnchor: Unhide Conversation",
+        icon: "$(eye)",
+      }),
+    );
+    expect(commandById.get("threadrelink.noHiddenConversations")).toEqual(
+      expect.objectContaining({
+        title: "ChatAnchor: No Hidden Conversations",
         icon: "$(eye)",
       }),
     );
@@ -144,6 +154,12 @@ describe("VS Code extension manifest", () => {
         icon: "$(tools)",
       }),
     );
+    expect(commandById.get("threadrelink.copyCompactAtPath")).toEqual(
+      expect.objectContaining({
+        title: "ChatAnchor: Copy Compact @ Transcript",
+        icon: "$(file-text)",
+      }),
+    );
 
     const titleMenus = manifest.contributes.menus["view/title"];
     expect(titleMenus).toEqual(
@@ -151,6 +167,12 @@ describe("VS Code extension manifest", () => {
         expect.objectContaining({
           command: "threadrelink.findOldConversations",
           group: "navigation@2",
+        }),
+        expect.objectContaining({
+          command: "threadrelink.startNewSession",
+          when:
+            "view == threadrelink.conversations && threadrelink.hasReadyProject",
+          group: "navigation@2.5",
         }),
         expect.objectContaining({
           command: "threadrelink.collapseTree",
@@ -163,6 +185,12 @@ describe("VS Code extension manifest", () => {
           when:
             "view == threadrelink.conversations && threadrelink.treeCollapsed",
           group: "navigation@3",
+        }),
+        expect.objectContaining({
+          command: "threadrelink.noHiddenConversations",
+          when:
+            "view == threadrelink.conversations && !threadrelink.hasHiddenConversations && !threadrelink.showingHiddenConversations",
+          group: "navigation@4",
         }),
         expect.objectContaining({
           command: "threadrelink.showHiddenConversations",
@@ -185,6 +213,17 @@ describe("VS Code extension manifest", () => {
       ]),
     );
 
+    const startNewSessionMenus = manifest.contributes.menus[
+      "view/item/context"
+    ].filter((entry) => entry.command === "threadrelink.startNewSession");
+    expect(startNewSessionMenus).toEqual([
+      expect.objectContaining({
+        when:
+          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linked\\.(codex|cursor|opencode)$/",
+        group: "inline@1",
+      }),
+    ]);
+
     const copyAtMenus = manifest.contributes.menus["view/item/context"].filter(
       (entry) => entry.command === "threadrelink.copyAtPath",
     );
@@ -196,6 +235,30 @@ describe("VS Code extension manifest", () => {
       }),
     ]);
 
+    const copyOpenCodeExportMenus = manifest.contributes.menus[
+      "view/item/context"
+    ].filter((entry) =>
+      entry.command === "threadrelink.exportOpenCodeAtPath"
+    );
+    expect(copyOpenCodeExportMenus).toEqual([
+      expect.objectContaining({
+        when:
+          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.opencode(\\.hidden)?$/",
+        group: "inline@2",
+      }),
+    ]);
+
+    const copyCompactMenus = manifest.contributes.menus[
+      "view/item/context"
+    ].filter((entry) => entry.command === "threadrelink.copyCompactAtPath");
+    expect(copyCompactMenus).toEqual([
+      expect.objectContaining({
+        when:
+          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)(\\.hidden)?$/",
+        group: "manage@3.5",
+      }),
+    ]);
+
     const revealMenus = manifest.contributes.menus["view/item/context"].filter(
       (entry) => entry.command === "threadrelink.revealLocation",
     );
@@ -203,7 +266,7 @@ describe("VS Code extension manifest", () => {
       expect.objectContaining({
         when:
           "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)(\\.hidden)?$/",
-        group: "inline@3",
+        group: "manage@3.6",
       }),
     ]);
     expect(commandIds).toContain("threadrelink.collapseTree");

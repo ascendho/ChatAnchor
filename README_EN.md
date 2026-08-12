@@ -17,14 +17,17 @@ ChatAnchor is a local VS Code extension: after a project folder is renamed or mo
 - Supports **Codex**, **Cursor Agent CLI**, and **OpenCode** conversations
 - Automatically reconnects after a project is renamed or moved, based on conservative evidence such as Git remote + commit and path aliases — never links by directory name alone
 - One-click resume of the original conversation: `codex resume --cd`, `agent --resume --workspace`, `opencode <new-path> --session`
+- Start a fresh Codex / Cursor / OpenCode session directly from the title bar or provider group
 - Copy @ Path / Reveal conversation files (Codex, Cursor)
+- Export a local JSON `@path` for OpenCode conversations
+- Copy Compact @ Transcript: convert Codex / Cursor JSONL or OpenCode export JSON into AI-readable Markdown, then copy its `@path`
 - Custom conversation descriptions for long, noisy, or generic titles
 - Hide conversations you do not need right now, show hidden items on demand, and unhide them later
 - Find Old Conversations to recover old conversations and relink ignored conversations
 - Advanced link fixes: right-click **Manage Conversation Link...** to move a mislinked conversation, or remove and ignore it for the current project
 - Runs entirely locally — no telemetry, nothing uploaded
 
-> **OpenCode** conversations have no standalone file (they live in the local `opencode.db`), so Reveal / Copy @ Path is not available for them; ChatAnchor resumes them by running `opencode <new-path> --session <id>` with the current project path.
+> **OpenCode** conversations have no standalone raw conversation file (they live in the local `opencode.db`), so Reveal / Copy @ Path is not available for them; ChatAnchor resumes them by running `opencode <new-path> --session <id>` with the current project path. When you need an `@` reference for another tool, right-click an OpenCode conversation and choose **Export OpenCode Conversation for @**. ChatAnchor runs `opencode export <session-id>`, writes a local JSON file, and copies the resulting `@path`. Exporting the same session again overwrites the same temporary JSON file; it does not append. If OpenCode produces incomplete JSON, ChatAnchor reads the local `opencode.db` in read-only mode to generate fallback JSON, and preserves the previous export until the replacement is valid. For cross-agent context handoff, prefer **Copy Compact @ Transcript**: it writes a compact Markdown transcript so raw JSONL/JSON tool logs do not flood the next agent's context.
 
 ## Getting started
 
@@ -49,9 +52,11 @@ ChatAnchor is a local VS Code extension: after a project folder is renamed or mo
 
 5. **Rename and reopen the folder**: close the Codex terminal, rename the folder outside VS Code, reopen it, then click "Refresh Conversations".
 
-6. **Resume the original conversation**: hover a conversation row and click the continue icon. ChatAnchor opens an integrated terminal running `codex resume --cd <new-path> <thread-id>`, `agent --resume <chat-id> --workspace <new-path>`, or `opencode <new-path> --session <id>` at the new path.
+6. **Resume the original conversation or start a new one**: hover a conversation row and click the continue icon. ChatAnchor opens an integrated terminal running `codex resume --cd <new-path> <thread-id>`, `agent --resume <chat-id> --workspace <new-path>`, or `opencode <new-path> --session <id>` at the new path. You can also use the title-bar plus button, or the plus button on a provider group, to start a new Codex / Cursor / OpenCode session directly in the project.
 
-7. **Organize the list**: right-click a conversation to edit its description or hide it. The title bar can temporarily show hidden conversations, and can unhide all hidden conversations in the current project.
+7. **Organize the list**: right-click a conversation to edit its description, hide it, generate compact context, or run **Reveal Conversation File** for Codex / Cursor conversations. The title-bar eye button can temporarily show hidden conversations, and can unhide all hidden conversations in the current project. When there are no hidden conversations, the title bar shows a normal eye and clicking it only reports that nothing is hidden.
+
+8. **Carry context across agents**: when switching between Codex, Cursor, and OpenCode, right-click a historical conversation and choose **Copy Compact @ Transcript**. The first use asks for confirmation because it reads the conversation body; then ChatAnchor writes a compact Markdown file in the system temp directory and copies `@<compact-transcript.md>` for pasting into another agent. The compact file is extractive: it prioritizes initial goals, recent requests, recent outcomes, and bounded tool summaries, with omitted/truncated counters at the end. If the raw format is not recognized and OpenCode fallback is unavailable, ChatAnchor reports the failure instead of copying an empty file.
 
 ## Link Management Examples
 
@@ -64,7 +69,7 @@ For everyday list cleanup, use **Hide Conversation**. Use link management only w
 
 ## Local data and privacy
 
-ChatAnchor runs entirely on your machine: it only reads conversation metadata (title, timestamps, working directory, Git info), never reads message bodies, uploads nothing, and has no telemetry. Scanning only happens after you explicitly set up a project and grant consent. Custom descriptions, hidden state, and project links are stored only in the local ChatAnchor registry; ChatAnchor does not modify the original Codex, Cursor, or OpenCode conversation data.
+ChatAnchor runs entirely on your machine: by default it only reads conversation metadata (title, timestamps, working directory, Git info), never reads message bodies, uploads nothing, and has no telemetry. Scanning only happens after you explicitly set up a project and grant consent. Custom descriptions, hidden state, and project links are stored only in the local ChatAnchor registry; ChatAnchor does not modify the original Codex, Cursor, or OpenCode conversation data. The only explicit exceptions are user-triggered export actions: **Export OpenCode Conversation for @** asks `opencode export` to write a local JSON file that may contain the full conversation history; if the CLI output is incomplete, it reads that session's message rows from `opencode.db` in read-only mode to write fallback JSON. **Copy Compact @ Transcript** reads a selected conversation body to write a compact local Markdown file. Nothing is uploaded, and original transcripts are not modified.
 
 ## Roadmap
 

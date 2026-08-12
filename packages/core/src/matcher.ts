@@ -41,7 +41,7 @@ export async function matchThreadToProject(
         kind: "user-ignored",
         confidence: 1,
         description:
-          "User explicitly removed this conversation from this ThreadRelink project.",
+          "User explicitly removed this conversation from this ChatAnchor project.",
       },
     ]);
   }
@@ -54,7 +54,7 @@ export async function matchThreadToProject(
         {
           kind: "stored-link",
           confidence: 1,
-          description: "Conversation was already linked to this ThreadRelink project.",
+          description: "Conversation was already linked to this ChatAnchor project.",
         },
       ],
       existingLink.relativeCwd,
@@ -66,7 +66,7 @@ export async function matchThreadToProject(
         kind: "stored-link",
         confidence: 1,
         description:
-          "Conversation was manually linked to another ThreadRelink project.",
+          "Conversation was manually linked to another ChatAnchor project.",
       },
     ]);
   }
@@ -154,7 +154,7 @@ export async function matchThreadToProject(
         kind: "stored-link",
         confidence: 1,
         description:
-          "Conversation has an automatic link to another ThreadRelink project and no stronger evidence was found.",
+          "Conversation has an automatic link to another ChatAnchor project and no stronger evidence was found.",
       },
     ]);
   }

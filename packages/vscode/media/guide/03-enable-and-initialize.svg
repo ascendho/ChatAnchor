@@ -22,7 +22,7 @@
   <circle cx="397" cy="58" r="18" class="callout"/><text x="397" y="65" text-anchor="middle" class="calloutText">4</text>
   <path d="M379 58h-17" stroke="#e5484d" stroke-width="3"/><path d="M362 58l9-6v12z" fill="#e5484d"/>
   <rect x="210" y="80" width="164" height="36" rx="6" fill="#2d2d30"/><text x="292" y="103" text-anchor="middle" class="small white">Set Up This Project</text>
-  <text x="72" y="148" class="ui" font-weight="600">ThreadRelink is off here</text>
+  <text x="72" y="148" class="ui" font-weight="600">ChatAnchor is off here</text>
   <text x="72" y="174" class="small muted">New projects are never scanned automatically.</text>
   <rect x="72" y="204" width="226" height="39" rx="5" fill="#007acc"/><text x="185" y="229" text-anchor="middle" class="ui white">Set up this project</text>
   <rect x="65" y="197" width="240" height="53" rx="7" fill="none" stroke="#e5484d" stroke-width="4"/>

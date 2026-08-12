@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  buildCursorNewSessionArgs,
   buildCursorResumeArgs,
   cursorChatBucketId,
   cursorProjectSlug,
@@ -36,6 +37,16 @@ describe("Cursor Agent CLI listing", () => {
     )).toEqual([
       "--resume",
       "a4efc723-68f4-45f5-8474-952597e995e8",
+      "--workspace",
+      workspace,
+    ]);
+  });
+
+  it("builds new session args for agent --workspace", () => {
+    const workspace = normalizeAbsolutePath(
+      "/Users/ascendho/Downloads/repo/threadrelink",
+    );
+    expect(buildCursorNewSessionArgs(workspace)).toEqual([
       "--workspace",
       workspace,
     ]);

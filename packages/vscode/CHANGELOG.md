@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.0.9
+
+- Add ChatAnchor entry points for starting new Codex, Cursor, and OpenCode
+  sessions from the conversations view.
+- Add an OpenCode **Export Conversation for @** action that writes a local JSON
+  export and copies its `@path`; repeated exports for the same session overwrite
+  the same file instead of appending or creating duplicates.
+- Add **Copy Compact @ Transcript** for Codex, Cursor, and OpenCode
+  conversations, converting raw JSONL/JSON histories into bounded Markdown
+  context for cross-agent handoff.
+- Parse current Codex rollout payload records for compact transcripts and
+  fall back to OpenCode's local database when `opencode export` emits incomplete
+  JSON.
+- Parse native OpenCode export messages that store roles under `message.info`
+  and text under `message.parts`, so compact transcripts work for current
+  OpenCode JSON exports.
+- Move **Copy Compact @ Transcript** and **Reveal Conversation File** into the
+  normal conversation right-click menu instead of row inline actions.
+- Keep the hidden-conversations title button visible with a normal-eye
+  no-hidden state, and only show the slashed-eye state when hidden conversations
+  can be revealed.
+
 ## 1.0.8
 
 - Add a single **Manage Conversation Link...** entry for advanced move/remove

@@ -44,6 +44,10 @@ export function buildCursorResumeArgs(
   ];
 }
 
+export function buildCursorNewSessionArgs(workspacePath: string): string[] {
+  return ["--workspace", normalizeAbsolutePath(workspacePath)];
+}
+
 export async function runCursorResume(
   chatId: string,
   workspacePath: string,
