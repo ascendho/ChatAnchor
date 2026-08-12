@@ -1,9 +1,11 @@
 # Changelog
 
-## Unreleased
+## 1.0.10
 
 - Streamline the GitHub and Marketplace README feature, link-management, and
   privacy sections so advanced details are shorter and easier to scan.
+- Clarify that the OpenCode @ action exports a generated JSON file before
+  copying its path, and use a file-code icon instead of the mention icon.
 
 ## 1.0.9
 

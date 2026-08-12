@@ -154,6 +154,12 @@ describe("VS Code extension manifest", () => {
         icon: "$(tools)",
       }),
     );
+    expect(commandById.get("threadrelink.exportOpenCodeAtPath")).toEqual(
+      expect.objectContaining({
+        title: "ChatAnchor: Export OpenCode JSON and Copy @ Path",
+        icon: "$(file-code)",
+      }),
+    );
     expect(commandById.get("threadrelink.copyCompactAtPath")).toEqual(
       expect.objectContaining({
         title: "ChatAnchor: Copy Compact @ Transcript",

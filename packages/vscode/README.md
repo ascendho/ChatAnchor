@@ -21,7 +21,7 @@ ChatAnchor is a local VS Code extension: after a project folder is renamed or mo
 - Organize conversations with custom descriptions, hide / unhide controls, and Find Old Conversations
 - Runs entirely locally — no telemetry, nothing uploaded
 
-> **OpenCode** conversations live in the local `opencode.db` and do not have standalone raw files, so Reveal / Copy @ Path is unavailable for them. For cross-agent handoff, prefer **Copy Compact @ Transcript**; use **Export OpenCode Conversation for @** when you need a JSON `@path`.
+> **OpenCode** conversations live in the local `opencode.db` and do not have standalone raw files, so Reveal / Copy @ Path is unavailable for them. For cross-agent handoff, prefer **Copy Compact @ Transcript**; use **Export OpenCode JSON and Copy @ Path** when you need a generated JSON `@path`.
 
 ## Getting started
 
@@ -70,7 +70,7 @@ For everyday cleanup, use `Hide Conversation`. Open link management only when a 
 
 ChatAnchor runs entirely on your machine. By default it only reads conversation metadata (title, timestamps, working directory, Git info), never reads message bodies, uploads nothing, and has no telemetry; scanning only happens after explicit project setup and consent.
 
-Custom descriptions, hidden state, and project links are stored only in the local ChatAnchor registry. ChatAnchor does not modify the original Codex, Cursor, or OpenCode conversation data. Only explicit **Export OpenCode Conversation for @** or **Copy Compact @ Transcript** actions read or write local conversation-content files, and those files stay on your machine.
+Custom descriptions, hidden state, and project links are stored only in the local ChatAnchor registry. ChatAnchor does not modify the original Codex, Cursor, or OpenCode conversation data. Only explicit **Export OpenCode JSON and Copy @ Path** or **Copy Compact @ Transcript** actions read or write local conversation-content files, and those files stay on your machine.
 
 ## Roadmap
 

@@ -21,7 +21,7 @@ ChatAnchor 是一个本地 VS Code 扩展：项目文件夹改名或移动后，
 - 整理会话列表：自定义描述、隐藏 / 恢复会话、Find Old Conversations 找回历史会话
 - 完全本地运行、无遥测、不上传任何数据
 
-> **OpenCode** 会话存在本地 `opencode.db` 中，没有独立原始会话文件，因此不提供 Reveal / Copy @ Path。需要把上下文交给其它 agent 时，优先使用 **Copy Compact @ Transcript**；确实需要 JSON `@path` 时，使用 **Export OpenCode Conversation for @**。
+> **OpenCode** 会话存在本地 `opencode.db` 中，没有独立原始会话文件，因此不提供 Reveal / Copy @ Path。需要把上下文交给其它 agent 时，优先使用 **Copy Compact @ Transcript**；确实需要 JSON `@path` 时，使用 **Export OpenCode JSON and Copy @ Path** 生成本地导出文件。
 
 ## 快速开始
 
@@ -70,7 +70,7 @@ ChatAnchor 是一个本地 VS Code 扩展：项目文件夹改名或移动后，
 
 ChatAnchor 完全在本机运行。默认只读取会话元数据（标题、时间、工作目录、Git 信息等），不读取消息正文，不上传任何数据，也不提供遥测；只有在显式设置项目并授权后才会扫描。
 
-自定义描述、隐藏状态和项目链接只写入本机 ChatAnchor registry，不会修改 Codex、Cursor 或 OpenCode 的原始会话数据。只有当你显式执行 **Export OpenCode Conversation for @** 或 **Copy Compact @ Transcript** 时，ChatAnchor 才会读取或写出本地会话内容文件；这些文件仍保留在本机。
+自定义描述、隐藏状态和项目链接只写入本机 ChatAnchor registry，不会修改 Codex、Cursor 或 OpenCode 的原始会话数据。只有当你显式执行 **Export OpenCode JSON and Copy @ Path** 或 **Copy Compact @ Transcript** 时，ChatAnchor 才会读取或写出本地会话内容文件；这些文件仍保留在本机。
 
 ## 未来规划
 
