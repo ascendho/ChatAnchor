@@ -47,6 +47,8 @@ import type {
   SetupMode,
   SyncResult,
   ThreadCorrectionResult,
+  ThreadDisplayPreference,
+  ThreadDisplayState,
   ThreadExclusion,
   ThreadLink,
   ThreadMetadata,
@@ -70,6 +72,16 @@ function threadKey(
 ): string {
   return `${provider}\0${threadId}`;
 }
+
+function threadProjectKey(
+  provider: ConversationProvider,
+  threadId: string,
+  projectId: string,
+): string {
+  return `${threadKey(provider, threadId)}\0${projectId}`;
+}
+
+const CUSTOM_LABEL_MAX_CODE_POINTS = 120;
 
 /** @deprecated Use ThreadRelinkServiceOptions. */
 export type RepoRecallServiceOptions = ThreadRelinkServiceOptions;
@@ -139,6 +151,129 @@ function upsertSnapshots(
   registry.threads = [...snapshots.values()].sort(
     (left, right) => right.updatedAt - left.updatedAt,
   );
+}
+
+function sanitizeCustomLabel(value: string | null): string | null {
+  if (value === null) {
+    return null;
+  }
+  const normalized = value.replace(/\s+/gu, " ").trim();
+  if (!normalized) {
+    return null;
+  }
+  return [...normalized].slice(0, CUSTOM_LABEL_MAX_CODE_POINTS).join("");
+}
+
+function displayStateFromPreference(
+  preference?: ThreadDisplayPreference,
+): ThreadDisplayState {
+  return {
+    customLabel: preference?.customLabel ?? null,
+    hidden: preference?.hidden ?? false,
+  };
+}
+
+function displayPreferenceMap(
+  preferences: ThreadDisplayPreference[],
+): Map<string, ThreadDisplayPreference> {
+  return new Map(
+    preferences.map((preference) => [
+      threadProjectKey(
+        preference.provider,
+        preference.threadId,
+        preference.projectId,
+      ),
+      preference,
+    ]),
+  );
+}
+
+function withDisplayPreferences(
+  decisions: MatchDecision[],
+  projectId: string,
+  preferences: ThreadDisplayPreference[],
+): MatchDecision[] {
+  const preferencesByThread = displayPreferenceMap(preferences);
+  return decisions.map((decision) => ({
+    ...decision,
+    display: displayStateFromPreference(
+      preferencesByThread.get(threadProjectKey(
+        decision.thread.provider,
+        decision.thread.id,
+        projectId,
+      )),
+    ),
+  }));
+}
+
+function assertThreadLinkedToProject(
+  registry: RegistryFile,
+  provider: ConversationProvider,
+  threadId: string,
+  projectId: string,
+): void {
+  if (!registry.projects.some((candidate) => candidate.id === projectId)) {
+    throw new ThreadRelinkError(
+      "PROJECT_NOT_FOUND",
+      `ChatAnchor project not found: ${projectId}`,
+    );
+  }
+  if (
+    !registry.threadLinks.some((candidate) =>
+      candidate.provider === provider
+      && candidate.threadId === threadId
+      && candidate.projectId === projectId
+    )
+  ) {
+    throw new ThreadRelinkError(
+      "THREAD_NOT_LINKED",
+      `Conversation ${provider}/${threadId} is not linked to this project.`,
+    );
+  }
+}
+
+function upsertDisplayPreference(
+  preferences: ThreadDisplayPreference[],
+  provider: ConversationProvider,
+  threadId: string,
+  projectId: string,
+  changes: Partial<ThreadDisplayState>,
+): ThreadDisplayPreference | null {
+  const existing = preferences.find((candidate) =>
+    candidate.provider === provider
+    && candidate.threadId === threadId
+    && candidate.projectId === projectId
+  );
+  const next: ThreadDisplayPreference = {
+    provider,
+    threadId,
+    projectId,
+    customLabel:
+      "customLabel" in changes
+        ? sanitizeCustomLabel(changes.customLabel ?? null)
+        : existing?.customLabel ?? null,
+    hidden:
+      "hidden" in changes
+        ? changes.hidden === true
+        : existing?.hidden ?? false,
+  };
+  const index = preferences.findIndex((candidate) =>
+    candidate.provider === provider
+    && candidate.threadId === threadId
+    && candidate.projectId === projectId
+  );
+  if (!next.customLabel && !next.hidden) {
+    if (index >= 0) {
+      preferences.splice(index, 1);
+    }
+    return null;
+  }
+  if (index >= 0) {
+    preferences[index] = next;
+  } else {
+    preferences.push(next);
+  }
+  return next;
 }
 
 function makeThreadLink(
@@ -660,10 +795,19 @@ export class ThreadRelinkService {
       ),
     );
 
-    const linked = decisions.filter((item) => item.status === "linked");
-    const suggested = decisions.filter((item) => item.status === "suggested");
-    const ignored = decisions.filter((item) => item.status === "ignored");
-    const unlinked = decisions.filter((item) => item.status === "unlinked");
+    const decisionsWithDisplay = withDisplayPreferences(
+      decisions,
+      project.id,
+      registry.threadDisplayPreferences,
+    );
+    const linked = decisionsWithDisplay.filter((item) => item.status === "linked");
+    const suggested = decisionsWithDisplay.filter((item) =>
+      item.status === "suggested"
+    );
+    const ignored = decisionsWithDisplay.filter((item) => item.status === "ignored");
+    const unlinked = decisionsWithDisplay.filter((item) =>
+      item.status === "unlinked"
+    );
     const timestamp = this.now().toISOString();
     await this.registry.update((draft) => {
       upsertSnapshots(draft, threads);
@@ -848,6 +992,14 @@ export class ThreadRelinkService {
           || candidate.threadId !== threadId
           || candidate.projectId !== projectId,
       );
+      if (previous && previous.projectId !== projectId) {
+        draft.threadDisplayPreferences = draft.threadDisplayPreferences.filter(
+          (candidate) =>
+            candidate.provider !== provider
+            || candidate.threadId !== threadId
+            || candidate.projectId !== previous.projectId,
+        );
+      }
     });
     return {
       threadId,
@@ -902,6 +1054,12 @@ export class ThreadRelinkService {
           || candidate.threadId !== threadId
           || candidate.projectId !== projectId,
       );
+      draft.threadDisplayPreferences = draft.threadDisplayPreferences.filter(
+        (candidate) =>
+          candidate.provider !== provider
+          || candidate.threadId !== threadId
+          || candidate.projectId !== projectId,
+      );
       upsertExclusion(
         draft.threadExclusions,
         provider,
@@ -921,6 +1079,90 @@ export class ThreadRelinkService {
         )
         .map((item) => item.projectId),
     };
+  }
+
+  public async setThreadCustomLabel(
+    threadId: string,
+    projectId: string,
+    customLabel: string | null,
+    provider: ConversationProvider = "codex",
+  ): Promise<ThreadDisplayState> {
+    const registry = await this.registry.read();
+    assertThreadLinkedToProject(registry, provider, threadId, projectId);
+
+    const updated = await this.registry.update((draft) => {
+      assertThreadLinkedToProject(draft, provider, threadId, projectId);
+      upsertDisplayPreference(
+        draft.threadDisplayPreferences,
+        provider,
+        threadId,
+        projectId,
+        { customLabel },
+      );
+    });
+    return displayStateFromPreference(
+      displayPreferenceMap(updated.threadDisplayPreferences).get(
+        threadProjectKey(provider, threadId, projectId),
+      ),
+    );
+  }
+
+  public async setThreadHidden(
+    threadId: string,
+    projectId: string,
+    hidden: boolean,
+    provider: ConversationProvider = "codex",
+  ): Promise<ThreadDisplayState> {
+    const registry = await this.registry.read();
+    assertThreadLinkedToProject(registry, provider, threadId, projectId);
+
+    const updated = await this.registry.update((draft) => {
+      assertThreadLinkedToProject(draft, provider, threadId, projectId);
+      upsertDisplayPreference(
+        draft.threadDisplayPreferences,
+        provider,
+        threadId,
+        projectId,
+        { hidden },
+      );
+    });
+    return displayStateFromPreference(
+      displayPreferenceMap(updated.threadDisplayPreferences).get(
+        threadProjectKey(provider, threadId, projectId),
+      ),
+    );
+  }
+
+  public async restoreHiddenThreads(projectId: string): Promise<number> {
+    const registry = await this.registry.read();
+    if (!registry.projects.some((candidate) => candidate.id === projectId)) {
+      throw new ThreadRelinkError(
+        "PROJECT_NOT_FOUND",
+        `ChatAnchor project not found: ${projectId}`,
+      );
+    }
+    let restored = 0;
+    await this.registry.update((draft) => {
+      if (!draft.projects.some((candidate) => candidate.id === projectId)) {
+        throw new ThreadRelinkError(
+          "PROJECT_NOT_FOUND",
+          `ChatAnchor project not found: ${projectId}`,
+        );
+      }
+      draft.threadDisplayPreferences = draft.threadDisplayPreferences
+        .map((preference) => {
+          if (preference.projectId !== projectId || !preference.hidden) {
+            return preference;
+          }
+          restored += 1;
+          return {
+            ...preference,
+            hidden: false,
+          };
+        })
+        .filter((preference) => preference.customLabel || preference.hidden);
+    });
+    return restored;
   }
 
   public async relink(
@@ -1125,6 +1367,9 @@ export class ThreadRelinkService {
         (link) => link.projectId !== projectId,
       );
       draft.threadExclusions = draft.threadExclusions.filter(
+        (item) => item.projectId !== projectId,
+      );
+      draft.threadDisplayPreferences = draft.threadDisplayPreferences.filter(
         (item) => item.projectId !== projectId,
       );
     });

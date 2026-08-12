@@ -23,7 +23,7 @@ interface ExtensionManifest {
     theme: string;
   };
   contributes: {
-    commands: Array<{ command: string }>;
+    commands: Array<{ command: string; icon?: string; title?: string }>;
     menus: {
       "view/title": Array<{
         command: string;
@@ -85,6 +85,9 @@ describe("VS Code extension manifest", () => {
     const commandIds = new Set(
       manifest.contributes.commands.map(({ command }) => command),
     );
+    const commandById = new Map(
+      manifest.contributes.commands.map((command) => [command.command, command]),
+    );
     expect([...commandIds].every((command) => command.startsWith("threadrelink.")))
       .toBe(true);
 
@@ -100,10 +103,40 @@ describe("VS Code extension manifest", () => {
     expect(commandIds).toContain("threadrelink.forgetProject");
     expect(commandIds).toContain("threadrelink.unlink");
     expect(commandIds).toContain("threadrelink.move");
+    expect(commandIds).toContain("threadrelink.editDescription");
+    expect(commandIds).toContain("threadrelink.hideConversation");
+    expect(commandIds).toContain("threadrelink.showConversation");
+    expect(commandIds).toContain("threadrelink.showHiddenConversations");
+    expect(commandIds).toContain("threadrelink.hideHiddenConversations");
+    expect(commandIds).toContain("threadrelink.restoreHiddenConversations");
     expect(commandIds).toContain("threadrelink.copyAtPath");
     expect(commandIds).toContain("threadrelink.revealLocation");
     expect(commandIds).toContain("threadrelink.collapseTree");
     expect(commandIds).toContain("threadrelink.expandTree");
+    expect(commandById.get("threadrelink.showConversation")).toEqual(
+      expect.objectContaining({
+        title: "ChatAnchor: Unhide Conversation",
+        icon: "$(eye)",
+      }),
+    );
+    expect(commandById.get("threadrelink.showHiddenConversations")).toEqual(
+      expect.objectContaining({
+        title: "ChatAnchor: Show Hidden Conversations",
+        icon: "$(eye-closed)",
+      }),
+    );
+    expect(commandById.get("threadrelink.hideHiddenConversations")).toEqual(
+      expect.objectContaining({
+        title: "ChatAnchor: Hide Hidden Conversations",
+        icon: "$(eye)",
+      }),
+    );
+    expect(commandById.get("threadrelink.restoreHiddenConversations")).toEqual(
+      expect.objectContaining({
+        title: "ChatAnchor: Unhide All Conversations",
+        icon: "$(clear-all)",
+      }),
+    );
 
     const titleMenus = manifest.contributes.menus["view/title"];
     expect(titleMenus).toEqual(
@@ -124,44 +157,48 @@ describe("VS Code extension manifest", () => {
             "view == threadrelink.conversations && threadrelink.treeCollapsed",
           group: "navigation@3",
         }),
+        expect.objectContaining({
+          command: "threadrelink.showHiddenConversations",
+          when:
+            "view == threadrelink.conversations && threadrelink.hasHiddenConversations && !threadrelink.showingHiddenConversations",
+          group: "navigation@4",
+        }),
+        expect.objectContaining({
+          command: "threadrelink.hideHiddenConversations",
+          when:
+            "view == threadrelink.conversations && threadrelink.showingHiddenConversations",
+          group: "navigation@4",
+        }),
+        expect.objectContaining({
+          command: "threadrelink.restoreHiddenConversations",
+          when:
+            "view == threadrelink.conversations && threadrelink.hasHiddenConversations",
+          group: "manage@0",
+        }),
       ]),
     );
 
     const copyAtMenus = manifest.contributes.menus["view/item/context"].filter(
       (entry) => entry.command === "threadrelink.copyAtPath",
     );
-    expect(copyAtMenus).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          when:
-            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)$/",
-          group: "inline@2",
-        }),
-        expect.objectContaining({
-          when:
-            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)$/",
-          group: "manage@0",
-        }),
-      ]),
-    );
+    expect(copyAtMenus).toEqual([
+      expect.objectContaining({
+        when:
+          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)(\\.hidden)?$/",
+        group: "inline@2",
+      }),
+    ]);
 
     const revealMenus = manifest.contributes.menus["view/item/context"].filter(
       (entry) => entry.command === "threadrelink.revealLocation",
     );
-    expect(revealMenus).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          when:
-            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)$/",
-          group: "inline@3",
-        }),
-        expect.objectContaining({
-          when:
-            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)$/",
-          group: "manage@1",
-        }),
-      ]),
-    );
+    expect(revealMenus).toEqual([
+      expect.objectContaining({
+        when:
+          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)(\\.hidden)?$/",
+        group: "inline@3",
+      }),
+    ]);
     expect(commandIds).toContain("threadrelink.collapseTree");
     expect(
       manifest.contributes.configuration?.properties?.["threadrelink.cursorHome"],
@@ -183,11 +220,39 @@ describe("VS Code extension manifest", () => {
       expect.arrayContaining([
         expect.objectContaining({
           when:
-            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)$/",
+            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)(\\.hidden)?$/",
           group: "inline@1",
         }),
       ]),
     );
+
+    const hideMenus = manifest.contributes.menus["view/item/context"].filter(
+      (entry) => entry.command === "threadrelink.hideConversation",
+    );
+    expect(hideMenus).toEqual([
+      expect.objectContaining({
+        when:
+          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)$/",
+        group: "manage@3",
+      }),
+    ]);
+
+    const showMenus = manifest.contributes.menus["view/item/context"].filter(
+      (entry) => entry.command === "threadrelink.showConversation",
+    );
+    expect(showMenus).toEqual([
+      expect.objectContaining({
+        when:
+          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)\\.hidden$/",
+        group: "manage@3",
+      }),
+    ]);
+
+    const threadContextMenuCommands = manifest.contributes.menus[
+      "view/item/context"
+    ].map((entry) => entry.command);
+    expect(threadContextMenuCommands).not.toContain("threadrelink.move");
+    expect(threadContextMenuCommands).not.toContain("threadrelink.unlink");
 
     for (const step of walkthrough?.steps ?? []) {
       expect(step.media.image).toMatch(/^media\/guide\/.+\.png$/);

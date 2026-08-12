@@ -5,6 +5,11 @@ import {
   relativeDate,
   type WorkspaceResult,
 } from "./view-model.js";
+import {
+  hiddenForProvider,
+  isHiddenConversation,
+  linkedForProvider,
+} from "./conversation-display.js";
 
 const PROVIDER_CATEGORIES: ReadonlyArray<{
   provider: ConversationProvider;
@@ -27,24 +32,17 @@ const PROVIDER_LABEL: Record<ConversationProvider, string> = {
   opencode: "OpenCode",
 };
 
-function linkedForProvider(
-  workspace: WorkspaceResult,
-  provider: ConversationProvider,
-): MatchDecision[] {
-  return (workspace.sync?.linked ?? []).filter(
-    (decision) => decision.thread.provider === provider,
-  );
-}
-
 function providerCategoryNode(
   workspace: WorkspaceResult,
   provider: ConversationProvider,
+  showHidden: boolean,
 ): ThreadRelinkTreeNode {
   return {
     kind: "category",
     workspace,
     provider,
-    decisions: linkedForProvider(workspace, provider),
+    decisions: linkedForProvider(workspace, provider, showHidden),
+    hiddenCount: hiddenForProvider(workspace, provider).length,
   };
 }
 
@@ -58,6 +56,7 @@ export type ThreadRelinkTreeNode =
       workspace: WorkspaceResult;
       provider: ConversationProvider;
       decisions: MatchDecision[];
+      hiddenCount: number;
     }
   | {
       kind: "thread";
@@ -89,6 +88,7 @@ implements vscode.TreeDataProvider<ThreadRelinkTreeNode>, vscode.Disposable {
   private expansionEpoch = 0;
   private preferredCollapsibleState =
     vscode.TreeItemCollapsibleState.Expanded;
+  private showHiddenConversations = false;
 
   public readonly onDidChangeTreeData = this.changed.event;
 
@@ -145,6 +145,24 @@ implements vscode.TreeDataProvider<ThreadRelinkTreeNode>, vscode.Disposable {
     this.preferredCollapsibleState = vscode.TreeItemCollapsibleState.Expanded;
   }
 
+  public setShowHiddenConversations(showHidden: boolean): void {
+    this.showHiddenConversations = showHidden;
+    this.expansionEpoch += 1;
+    this.changed.fire();
+  }
+
+  public isShowingHiddenConversations(): boolean {
+    return this.showHiddenConversations;
+  }
+
+  public hasHiddenConversations(): boolean {
+    return this.workspaces.some((workspace) =>
+      (workspace.sync?.linked ?? []).some((decision) =>
+        isHiddenConversation(decision)
+      )
+    );
+  }
+
   public workspaceNodes(): ThreadRelinkTreeNode[] {
     return this.workspaces.map((workspace) => ({
       kind: "workspace" as const,
@@ -154,11 +172,15 @@ implements vscode.TreeDataProvider<ThreadRelinkTreeNode>, vscode.Disposable {
 
   public allLinked(): ThreadRelinkTreeNode[] {
     return this.workspaces.flatMap((workspace) =>
-      (workspace.sync?.linked ?? []).map((decision) => ({
-        kind: "thread" as const,
-        workspace,
-        decision,
-      }))
+      (workspace.sync?.linked ?? [])
+        .filter((decision) =>
+          this.showHiddenConversations || !isHiddenConversation(decision)
+        )
+        .map((decision) => ({
+          kind: "thread" as const,
+          workspace,
+          decision,
+        }))
     );
   }
 
@@ -175,6 +197,7 @@ implements vscode.TreeDataProvider<ThreadRelinkTreeNode>, vscode.Disposable {
       return providerCategoryNode(
         element.workspace,
         element.decision.thread.provider,
+        this.showHiddenConversations,
       );
     }
     if (element.kind === "message" && element.provider && element.workspacePath) {
@@ -182,7 +205,11 @@ implements vscode.TreeDataProvider<ThreadRelinkTreeNode>, vscode.Disposable {
         (candidate) => candidate.path === element.workspacePath,
       );
       return workspace
-        ? providerCategoryNode(workspace, element.provider)
+        ? providerCategoryNode(
+            workspace,
+            element.provider,
+            this.showHiddenConversations,
+          )
         : undefined;
     }
     const workspacePath = element.workspacePath;
@@ -239,7 +266,11 @@ implements vscode.TreeDataProvider<ThreadRelinkTreeNode>, vscode.Disposable {
         label,
         this.preferredCollapsibleState,
       );
-      item.description = String(element.decisions.length);
+      item.description = element.hiddenCount > 0
+        ? this.showHiddenConversations
+          ? `${element.decisions.length} total · ${element.hiddenCount} hidden shown`
+          : `${element.decisions.length} visible · ${element.hiddenCount} hidden`
+        : String(element.decisions.length);
       item.iconPath = this.providerIcon(element.provider);
       item.contextValue = `threadrelink.linked.${element.provider}`;
       item.id =
@@ -283,19 +314,25 @@ implements vscode.TreeDataProvider<ThreadRelinkTreeNode>, vscode.Disposable {
     item.description = [
       relativeDate(decision.thread.updatedAt),
       decision.thread.archived ? "archived" : null,
+      decision.display?.hidden ? "hidden" : null,
     ].filter(Boolean).join(" · ");
     item.tooltip = [
+      decision.display?.customLabel
+        ? `Custom description: ${decision.display.customLabel}`
+        : null,
       decision.thread.name ?? decision.thread.preview ?? decision.thread.id,
       `Provider: ${providerLabel}`,
       `Thread: ${decision.thread.id}`,
       `Recorded cwd: ${decision.thread.cwd}`,
       ...decision.evidence.map((evidence) => evidence.description),
-    ].join("\n");
+    ].filter(Boolean).join("\n");
     item.iconPath = decision.thread.archived
       ? new vscode.ThemeIcon("archive")
       : this.providerIcon(decision.thread.provider);
-    item.contextValue =
-      `threadrelink.linkedThread.${decision.thread.provider}`;
+    item.contextValue = [
+      `threadrelink.linkedThread.${decision.thread.provider}`,
+      decision.display?.hidden ? "hidden" : null,
+    ].filter(Boolean).join(".");
     item.id =
       `thread:${this.expansionEpoch}:${element.workspace.path}:${decision.thread.provider}:${decision.thread.id}`;
     return item;
@@ -358,12 +395,19 @@ implements vscode.TreeDataProvider<ThreadRelinkTreeNode>, vscode.Disposable {
       }
 
       return PROVIDER_CATEGORIES.map(({ provider }) =>
-        providerCategoryNode(element.workspace, provider)
+        providerCategoryNode(
+          element.workspace,
+          provider,
+          this.showHiddenConversations,
+        )
       );
     }
     if (element.kind === "category") {
       if (element.decisions.length === 0) {
-        const label = `No ${PROVIDER_LABEL[element.provider] ?? "Codex"} conversations for this project.`;
+        const providerLabel = PROVIDER_LABEL[element.provider] ?? "Codex";
+        const label = element.hiddenCount > 0 && !this.showHiddenConversations
+          ? `No visible ${providerLabel} conversations for this project.`
+          : `No ${providerLabel} conversations for this project.`;
         return [{
           kind: "message",
           label,

@@ -782,6 +782,72 @@ describe("ThreadRelinkService", () => {
       .toEqual([thread.id]);
   });
 
+  it("persists custom labels and hidden state without unlinking conversations", async () => {
+    const base = await mkdtemp(join(tmpdir(), "threadrelink-display-"));
+    cleanup.push(base);
+    const projectAPath = join(base, "project-a");
+    const projectBPath = join(base, "project-b");
+    await mkdir(projectAPath);
+    await mkdir(projectBPath);
+    const thread: ThreadMetadata = {
+      provider: "opencode",
+      id: "ses_display",
+      name: "Original OpenCode title",
+      preview: "Original OpenCode title",
+      cwd: projectAPath,
+      createdAt: 1,
+      updatedAt: 2,
+      archived: false,
+      cliVersion: "1.18.14",
+      modelProvider: "opencode",
+      gitInfo: null,
+    };
+    const service = new ThreadRelinkService({
+      registryHome: join(base, "state"),
+      historyAdapterFactory: async () => adapterFor([thread]),
+      now: () => new Date("2026-07-29T00:00:00.000Z"),
+    });
+    const projectA = await service.setupProject(projectAPath, "directory");
+    const projectB = await service.setupProject(projectBPath, "directory");
+    await service.sync(projectAPath);
+
+    await service.setThreadCustomLabel(
+      thread.id,
+      projectA.id,
+      "  Custom OpenCode label  ",
+      "opencode",
+    );
+    await service.setThreadHidden(thread.id, projectA.id, true, "opencode");
+
+    const linkedA = (await service.sync(projectAPath)).linked;
+    expect(linkedA).toHaveLength(1);
+    expect(linkedA[0]).toMatchObject({
+      thread: { id: thread.id },
+      display: {
+        customLabel: "Custom OpenCode label",
+        hidden: true,
+      },
+    });
+    const registry = await service.registry.read();
+    expect(registry.threadLinks).toHaveLength(1);
+    expect(registry.threadExclusions).toHaveLength(0);
+
+    await service.linkThreadToProject(thread.id, projectB.id, "opencode");
+    expect((await service.registry.read()).threadDisplayPreferences)
+      .toHaveLength(0);
+
+    await service.setThreadHidden(thread.id, projectB.id, true, "opencode");
+    expect(await service.restoreHiddenThreads(projectA.id)).toBe(0);
+    expect((await service.sync(projectBPath)).linked[0]?.display).toMatchObject({
+      hidden: true,
+    });
+    expect(await service.restoreHiddenThreads(projectB.id)).toBe(1);
+    expect((await service.sync(projectBPath)).linked[0]?.display).toMatchObject({
+      customLabel: null,
+      hidden: false,
+    });
+  });
+
   it("forgets ThreadRelink links and identities without deleting thread snapshots", async () => {
     const base = await mkdtemp(join(tmpdir(), "threadrelink-forget-"));
     cleanup.push(base);
@@ -807,6 +873,12 @@ describe("ThreadRelinkService", () => {
     });
     const project = await service.setupProject(root);
     await service.sync(root);
+    await service.setThreadCustomLabel(
+      thread.id,
+      project.id,
+      "Temporary label",
+    );
+    await service.setThreadHidden(thread.id, project.id, true);
 
     const preview = await service.previewForgetProject(project.id);
     const result = await service.forgetProject(project.id);
@@ -817,6 +889,7 @@ describe("ThreadRelinkService", () => {
     expect(registry.projects).toHaveLength(0);
     expect(registry.threadLinks).toHaveLength(0);
     expect(registry.threadExclusions).toHaveLength(0);
+    expect(registry.threadDisplayPreferences).toHaveLength(0);
     expect(registry.threads.map((item) => item.id)).toEqual([thread.id]);
     await expect(
       execFileAsync("git", [

@@ -43,6 +43,16 @@ describe("VS Code view model", () => {
     expect(confidenceLabel(decision())).toBe("72% match");
   });
 
+  it("uses custom descriptions before provider metadata", () => {
+    expect(conversationLabel({
+      ...decision(),
+      display: {
+        customLabel: "My pinned OpenCode task",
+        hidden: false,
+      },
+    })).toBe("My pinned OpenCode task");
+  });
+
   it("keeps short Cursor-style titles as-is", () => {
     expect(formatConversationLabel(
       "Project Conversation Location",

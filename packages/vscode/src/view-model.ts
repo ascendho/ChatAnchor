@@ -76,6 +76,13 @@ export function formatConversationLabel(
 }
 
 export function conversationLabel(decision: MatchDecision): string {
+  if (decision.display?.customLabel) {
+    return formatConversationLabel(
+      decision.display.customLabel,
+      null,
+      decision.thread.id,
+    );
+  }
   return formatConversationLabel(
     decision.thread.name,
     decision.thread.preview,

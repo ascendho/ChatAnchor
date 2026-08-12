@@ -2,7 +2,7 @@
   "name": "threadrelink",
   "displayName": "ChatAnchor",
   "description": "A VS Code extension that keeps AI coding agent conversations connected to their projects after folders are renamed or moved.",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "icon": "resources/threadrelink.png",
   "publisher": "ascendho",
   "repository": {
@@ -106,6 +106,36 @@
         "command": "threadrelink.move",
         "title": "ChatAnchor: Move Conversation to Another Project",
         "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "threadrelink.editDescription",
+        "title": "ChatAnchor: Edit Conversation Description",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "threadrelink.hideConversation",
+        "title": "ChatAnchor: Hide Conversation",
+        "icon": "$(eye-closed)"
+      },
+      {
+        "command": "threadrelink.showConversation",
+        "title": "ChatAnchor: Unhide Conversation",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "threadrelink.showHiddenConversations",
+        "title": "ChatAnchor: Show Hidden Conversations",
+        "icon": "$(eye-closed)"
+      },
+      {
+        "command": "threadrelink.hideHiddenConversations",
+        "title": "ChatAnchor: Hide Hidden Conversations",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "threadrelink.restoreHiddenConversations",
+        "title": "ChatAnchor: Unhide All Conversations",
+        "icon": "$(clear-all)"
       },
       {
         "command": "threadrelink.resume",
@@ -254,6 +284,21 @@
           "group": "navigation@3"
         },
         {
+          "command": "threadrelink.showHiddenConversations",
+          "when": "view == threadrelink.conversations && threadrelink.hasHiddenConversations && !threadrelink.showingHiddenConversations",
+          "group": "navigation@4"
+        },
+        {
+          "command": "threadrelink.hideHiddenConversations",
+          "when": "view == threadrelink.conversations && threadrelink.showingHiddenConversations",
+          "group": "navigation@4"
+        },
+        {
+          "command": "threadrelink.restoreHiddenConversations",
+          "when": "view == threadrelink.conversations && threadrelink.hasHiddenConversations",
+          "group": "manage@0"
+        },
+        {
           "command": "threadrelink.relink",
           "when": "view == threadrelink.conversations && threadrelink.hasReadyProject",
           "group": "manage@1"
@@ -272,37 +317,32 @@
       "view/item/context": [
         {
           "command": "threadrelink.resume",
-          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)$/",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)(\\.hidden)?$/",
           "group": "inline@1"
         },
         {
           "command": "threadrelink.copyAtPath",
-          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)$/",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)(\\.hidden)?$/",
           "group": "inline@2"
         },
         {
           "command": "threadrelink.revealLocation",
-          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)$/",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)(\\.hidden)?$/",
           "group": "inline@3"
         },
         {
-          "command": "threadrelink.copyAtPath",
-          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)$/",
-          "group": "manage@0"
-        },
-        {
-          "command": "threadrelink.revealLocation",
-          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)$/",
-          "group": "manage@1"
-        },
-        {
-          "command": "threadrelink.move",
-          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\./",
+          "command": "threadrelink.editDescription",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)(\\.hidden)?$/",
           "group": "manage@2"
         },
         {
-          "command": "threadrelink.unlink",
-          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\./",
+          "command": "threadrelink.hideConversation",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)$/",
+          "group": "manage@3"
+        },
+        {
+          "command": "threadrelink.showConversation",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)\\.hidden$/",
           "group": "manage@3"
         }
       ]

@@ -1,4 +1,4 @@
-export const REGISTRY_SCHEMA_VERSION = 4 as const;
+export const REGISTRY_SCHEMA_VERSION = 5 as const;
 
 export type ConversationProvider = "codex" | "cursor" | "opencode";
 export type ProjectKind = "git" | "directory";
@@ -93,12 +93,26 @@ export interface ThreadExclusion {
   createdAt: string;
 }
 
+export interface ThreadDisplayPreference {
+  provider: ConversationProvider;
+  threadId: string;
+  projectId: string;
+  customLabel: string | null;
+  hidden: boolean;
+}
+
+export interface ThreadDisplayState {
+  customLabel: string | null;
+  hidden: boolean;
+}
+
 export interface RegistryFile {
   schemaVersion: typeof REGISTRY_SCHEMA_VERSION;
   projects: ProjectRecord[];
   threads: ThreadMetadata[];
   threadLinks: ThreadLink[];
   threadExclusions: ThreadExclusion[];
+  threadDisplayPreferences: ThreadDisplayPreference[];
 }
 
 export interface MatchDecision {
@@ -107,6 +121,7 @@ export interface MatchDecision {
   projectId: string | null;
   evidence: LinkEvidence[];
   relativeCwd: string | null;
+  display?: ThreadDisplayState;
 }
 
 export interface SyncResult {

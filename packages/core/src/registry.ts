@@ -94,6 +94,14 @@ const ThreadExclusionSchema = z.object({
   createdAt: z.string(),
 });
 
+const ThreadDisplayPreferenceSchema = z.object({
+  provider: ProviderSchema,
+  threadId: z.string(),
+  projectId: z.string(),
+  customLabel: z.string().nullable(),
+  hidden: z.boolean(),
+});
+
 const RegistryV1Schema = z.object({
   schemaVersion: z.literal(1),
   projects: z.array(ProjectSchema),
@@ -121,12 +129,21 @@ const RegistryV3Schema = z.object({
   ),
 });
 
+const RegistryV4Schema = z.object({
+  schemaVersion: z.literal(4),
+  projects: z.array(ProjectSchema),
+  threads: z.array(ThreadMetadataSchema),
+  threadLinks: z.array(ThreadLinkSchema),
+  threadExclusions: z.array(ThreadExclusionSchema),
+});
+
 const RegistrySchema = z.object({
   schemaVersion: z.literal(REGISTRY_SCHEMA_VERSION),
   projects: z.array(ProjectSchema),
   threads: z.array(ThreadMetadataSchema),
   threadLinks: z.array(ThreadLinkSchema),
   threadExclusions: z.array(ThreadExclusionSchema),
+  threadDisplayPreferences: z.array(ThreadDisplayPreferenceSchema),
 });
 
 function parseRegistry(value: unknown, path: string): RegistryFile {
@@ -135,11 +152,21 @@ function parseRegistry(value: unknown, path: string): RegistryFile {
     return current.data;
   }
 
+  const v4 = RegistryV4Schema.safeParse(value);
+  if (v4.success) {
+    return {
+      ...v4.data,
+      schemaVersion: REGISTRY_SCHEMA_VERSION,
+      threadDisplayPreferences: [],
+    };
+  }
+
   const v3 = RegistryV3Schema.safeParse(value);
   if (v3.success) {
     return {
       ...v3.data,
       schemaVersion: REGISTRY_SCHEMA_VERSION,
+      threadDisplayPreferences: [],
     };
   }
 
@@ -148,6 +175,7 @@ function parseRegistry(value: unknown, path: string): RegistryFile {
     return {
       ...v2.data,
       schemaVersion: REGISTRY_SCHEMA_VERSION,
+      threadDisplayPreferences: [],
     };
   }
 
@@ -157,6 +185,7 @@ function parseRegistry(value: unknown, path: string): RegistryFile {
       ...legacy.data,
       schemaVersion: REGISTRY_SCHEMA_VERSION,
       threadExclusions: [],
+      threadDisplayPreferences: [],
     };
   }
 
@@ -165,10 +194,7 @@ function parseRegistry(value: unknown, path: string): RegistryFile {
     && typeof value === "object"
     && "schemaVersion" in value
     && typeof value.schemaVersion === "number"
-    && value.schemaVersion !== 1
-    && value.schemaVersion !== 2
-    && value.schemaVersion !== 3
-    && value.schemaVersion !== REGISTRY_SCHEMA_VERSION
+    && ![1, 2, 3, 4, REGISTRY_SCHEMA_VERSION].includes(value.schemaVersion)
   ) {
     throw new ThreadRelinkError(
       "UNSUPPORTED_REGISTRY_VERSION",
@@ -189,6 +215,7 @@ function emptyRegistry(): RegistryFile {
     threads: [],
     threadLinks: [],
     threadExclusions: [],
+    threadDisplayPreferences: [],
   };
 }
 

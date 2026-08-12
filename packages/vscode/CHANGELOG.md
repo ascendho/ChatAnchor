@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.6
+
+- Add custom conversation descriptions for Codex, Cursor, and OpenCode
+  conversations without reading message bodies.
+- Add per-project hide/unhide controls for conversations, including showing
+  hidden conversations and unhiding all hidden conversations for a project.
+- Simplify the conversation context menu and clarify hidden-state toolbar
+  icons so regular hide/unhide actions are easier to scan.
+- Hide conversations immediately after the Hide Conversation command succeeds,
+  instead of requiring a second click on the hidden-conversation toolbar filter.
+
 ## 1.0.5
 
 - Reuse already-running Codex resume terminals after an extension reload or

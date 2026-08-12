@@ -18,6 +18,7 @@ import {
 import {
   confidenceLabel,
   conversationLabel,
+  formatConversationLabel,
   formatRelocationReport,
   relativeDate,
   type WorkspaceResult,
@@ -33,6 +34,7 @@ import {
   resumeTerminalEnv,
   resumeTerminalIdentity,
 } from "./resume-terminals.js";
+import { hiddenConversationCount } from "./conversation-display.js";
 
 const CONSENT_KEY = "threadrelink.metadataConsent.v1";
 const REPAIR_WARNING_PREFIX = "threadrelink.repairWarning.v1";
@@ -191,6 +193,23 @@ function recoveryItem(decision: MatchDecision): RecoveryPick {
   };
 }
 
+function projectIdForThreadNode(
+  node: ThreadRelinkTreeNode,
+): string | undefined {
+  if (node.kind !== "thread") {
+    return undefined;
+  }
+  return node.workspace.sync?.project.id ?? node.workspace.probe?.project?.id;
+}
+
+function hiddenCount(workspace: WorkspaceResult): number {
+  return hiddenConversationCount(workspace);
+}
+
+function normalizedCustomLabelLength(value: string): number {
+  return [...value.replace(/\s+/gu, " ").trim()].length;
+}
+
 export async function activate(
   context: vscode.ExtensionContext,
 ): Promise<void> {
@@ -235,6 +254,16 @@ export async function activate(
           workspace.probe && workspace.probe.state !== "ready"
         ),
       ),
+      vscode.commands.executeCommand(
+        "setContext",
+        "threadrelink.hasHiddenConversations",
+        provider.hasHiddenConversations(),
+      ),
+      vscode.commands.executeCommand(
+        "setContext",
+        "threadrelink.showingHiddenConversations",
+        provider.isShowingHiddenConversations(),
+      ),
       setTreeCollapsedContext(provider.isTreeCollapsed()),
     ]);
   };
@@ -258,6 +287,16 @@ export async function activate(
         // Reveal can fail if the view is hidden or the node disappeared.
       }
     }
+  };
+
+  const showHiddenConversations = async (): Promise<void> => {
+    provider.setShowHiddenConversations(true);
+    await updateContexts();
+  };
+
+  const hideHiddenConversations = async (): Promise<void> => {
+    provider.setShowHiddenConversations(false);
+    await updateContexts();
   };
 
   const openGettingStarted = async (): Promise<void> => {
@@ -630,6 +669,144 @@ export async function activate(
     }
   };
 
+  const editThreadDescription = async (
+    node?: ThreadRelinkTreeNode,
+  ): Promise<void> => {
+    if (node?.kind !== "thread") {
+      return;
+    }
+    const projectId = projectIdForThreadNode(node);
+    if (!projectId) {
+      return;
+    }
+    const originalLabel = formatConversationLabel(
+      node.decision.thread.name,
+      node.decision.thread.preview,
+      node.decision.thread.id,
+    );
+    const value = await vscode.window.showInputBox({
+      prompt:
+        "Set a custom conversation description. Leave empty to use the original title.",
+      placeHolder: originalLabel,
+      value: node.decision.display?.customLabel ?? "",
+      ignoreFocusOut: true,
+      validateInput: (input) =>
+        normalizedCustomLabelLength(input) > 120
+          ? "Descriptions are limited to 120 characters."
+          : undefined,
+    });
+    if (value === undefined) {
+      return;
+    }
+    try {
+      const state = await makeService().setThreadCustomLabel(
+        node.decision.thread.id,
+        projectId,
+        value,
+        node.decision.thread.provider,
+      );
+      void vscode.window.showInformationMessage(
+        state.customLabel
+          ? `Updated “${originalLabel}”.`
+          : `Cleared custom description for “${originalLabel}”.`,
+      );
+      await refresh(false);
+    } catch (error) {
+      void vscode.window.showErrorMessage(`ChatAnchor: ${errorMessage(error)}`);
+    }
+  };
+
+  const hideThread = async (
+    node?: ThreadRelinkTreeNode,
+  ): Promise<void> => {
+    if (node?.kind !== "thread") {
+      return;
+    }
+    const projectId = projectIdForThreadNode(node);
+    if (!projectId) {
+      return;
+    }
+    const label = conversationLabel(node.decision);
+    try {
+      await makeService().setThreadHidden(
+        node.decision.thread.id,
+        projectId,
+        true,
+        node.decision.thread.provider,
+      );
+      provider.setShowHiddenConversations(false);
+      void vscode.window.showInformationMessage(`Hidden “${label}”.`);
+      await refresh(false);
+    } catch (error) {
+      void vscode.window.showErrorMessage(`ChatAnchor: ${errorMessage(error)}`);
+    }
+  };
+
+  const showThread = async (
+    node?: ThreadRelinkTreeNode,
+  ): Promise<void> => {
+    if (node?.kind !== "thread") {
+      return;
+    }
+    const projectId = projectIdForThreadNode(node);
+    if (!projectId) {
+      return;
+    }
+    const label = conversationLabel(node.decision);
+    try {
+      await makeService().setThreadHidden(
+        node.decision.thread.id,
+        projectId,
+        false,
+        node.decision.thread.provider,
+      );
+      void vscode.window.showInformationMessage(`Unhidden “${label}”.`);
+      await refresh(false);
+    } catch (error) {
+      void vscode.window.showErrorMessage(`ChatAnchor: ${errorMessage(error)}`);
+    }
+  };
+
+  const restoreHiddenConversations = async (): Promise<void> => {
+    const workspaces = provider.getWorkspaces().filter((workspace) =>
+      workspace.probe?.state === "ready" && hiddenCount(workspace) > 0
+    );
+    if (workspaces.length === 0) {
+      void vscode.window.showInformationMessage(
+        "No hidden project conversations to unhide.",
+      );
+      return;
+    }
+    const workspace = workspaces.length === 1
+      ? workspaces[0]
+      : (await vscode.window.showQuickPick(
+          workspaces.map((candidate) => ({
+            label: candidate.name,
+            description: `${hiddenCount(candidate)} hidden`,
+            detail: candidate.path,
+            workspace: candidate,
+          })),
+          {
+            placeHolder: "Choose a project to unhide conversations",
+            matchOnDetail: true,
+            ignoreFocusOut: true,
+          },
+        ))?.workspace;
+    const projectId = workspace?.sync?.project.id ?? workspace?.probe?.project?.id;
+    if (!workspace || !projectId) {
+      return;
+    }
+    try {
+      const restored = await makeService().restoreHiddenThreads(projectId);
+      void vscode.window.showInformationMessage(
+        `Unhid ${restored} hidden conversation${restored === 1 ? "" : "s"} in ${workspace.name}.`,
+      );
+      await refresh(false);
+    } catch (error) {
+      void vscode.window.showErrorMessage(`ChatAnchor: ${errorMessage(error)}`);
+    }
+  };
+
   const moveThreadLink = async (
     node?: ThreadRelinkTreeNode,
   ): Promise<void> => {
@@ -784,6 +961,18 @@ export async function activate(
       "threadrelink.expandTree",
       expandTree,
     ),
+    vscode.commands.registerCommand(
+      "threadrelink.showHiddenConversations",
+      showHiddenConversations,
+    ),
+    vscode.commands.registerCommand(
+      "threadrelink.hideHiddenConversations",
+      hideHiddenConversations,
+    ),
+    vscode.commands.registerCommand(
+      "threadrelink.restoreHiddenConversations",
+      restoreHiddenConversations,
+    ),
     view.onDidExpandElement(() => {
       provider.markPreferredExpanded();
       void setTreeCollapsedContext(false);
@@ -807,6 +996,18 @@ export async function activate(
     vscode.commands.registerCommand(
       "threadrelink.unlink",
       removeThreadLink,
+    ),
+    vscode.commands.registerCommand(
+      "threadrelink.editDescription",
+      editThreadDescription,
+    ),
+    vscode.commands.registerCommand(
+      "threadrelink.hideConversation",
+      hideThread,
+    ),
+    vscode.commands.registerCommand(
+      "threadrelink.showConversation",
+      showThread,
     ),
     vscode.commands.registerCommand(
       "threadrelink.move",
@@ -1070,6 +1271,12 @@ export async function activate(
     "findOldConversations",
     "forgetProject",
     "confirmLink",
+    "editDescription",
+    "hideConversation",
+    "showConversation",
+    "showHiddenConversations",
+    "hideHiddenConversations",
+    "restoreHiddenConversations",
     "resume",
     "copyAtPath",
     "revealLocation",

@@ -28,7 +28,8 @@ describe("RegistryStore", () => {
     const store = new RegistryStore(home);
 
     const initial = await store.read();
-    expect(initial.schemaVersion).toBe(4);
+    expect(initial.schemaVersion).toBe(5);
+    expect(initial.threadDisplayPreferences).toEqual([]);
 
     await store.update((registry) => {
       registry.projects.push({
@@ -44,10 +45,10 @@ describe("RegistryStore", () => {
 
     expect((await store.read()).projects).toHaveLength(1);
     expect(JSON.parse(await readFile(store.registryPath, "utf8")).schemaVersion)
-      .toBe(4);
+      .toBe(5);
   });
 
-  it("normalizes a version 1 registry and persists version 4 on update", async () => {
+  it("normalizes a version 1 registry and persists version 5 on update", async () => {
     const home = await mkdtemp(join(tmpdir(), "threadrelink-registry-v1-"));
     cleanup.push(home);
     const registryPath = join(home, "registry.json");
@@ -64,20 +65,22 @@ describe("RegistryStore", () => {
     const store = new RegistryStore(home);
 
     expect(await store.read()).toMatchObject({
-      schemaVersion: 4,
+      schemaVersion: 5,
       threadExclusions: [],
+      threadDisplayPreferences: [],
     });
     expect(JSON.parse(await readFile(registryPath, "utf8")).schemaVersion)
       .toBe(1);
 
     await store.update(() => undefined);
     expect(JSON.parse(await readFile(registryPath, "utf8"))).toMatchObject({
-      schemaVersion: 4,
+      schemaVersion: 5,
       threadExclusions: [],
+      threadDisplayPreferences: [],
     });
   });
 
-  it("normalizes a version 2 registry and persists version 4 on update", async () => {
+  it("normalizes a version 2 registry and persists version 5 on update", async () => {
     const home = await mkdtemp(join(tmpdir(), "threadrelink-registry-v2-"));
     cleanup.push(home);
     const registryPath = join(home, "registry.json");
@@ -95,16 +98,17 @@ describe("RegistryStore", () => {
     const store = new RegistryStore(home);
 
     expect(await store.read()).toMatchObject({
-      schemaVersion: 4,
+      schemaVersion: 5,
       threadExclusions: [],
+      threadDisplayPreferences: [],
     });
 
     await store.update(() => undefined);
     expect(JSON.parse(await readFile(registryPath, "utf8")).schemaVersion)
-      .toBe(4);
+      .toBe(5);
   });
 
-  it("normalizes a version 3 registry and persists version 4 on update", async () => {
+  it("normalizes a version 3 registry and persists version 5 on update", async () => {
     const home = await mkdtemp(join(tmpdir(), "threadrelink-registry-v3-"));
     cleanup.push(home);
     const registryPath = join(home, "registry.json");
@@ -136,13 +140,43 @@ describe("RegistryStore", () => {
     const store = new RegistryStore(home);
 
     expect(await store.read()).toMatchObject({
-      schemaVersion: 4,
+      schemaVersion: 5,
       threads: [{ provider: "cursor", id: "chat-1" }],
+      threadDisplayPreferences: [],
     });
 
     await store.update(() => undefined);
     expect(JSON.parse(await readFile(registryPath, "utf8")).schemaVersion)
-      .toBe(4);
+      .toBe(5);
+  });
+
+  it("normalizes a version 4 registry and persists version 5 on update", async () => {
+    const home = await mkdtemp(join(tmpdir(), "threadrelink-registry-v4-"));
+    cleanup.push(home);
+    const registryPath = join(home, "registry.json");
+    await writeFile(
+      registryPath,
+      `${JSON.stringify({
+        schemaVersion: 4,
+        projects: [],
+        threads: [],
+        threadLinks: [],
+        threadExclusions: [],
+      })}\n`,
+      "utf8",
+    );
+    const store = new RegistryStore(home);
+
+    expect(await store.read()).toMatchObject({
+      schemaVersion: 5,
+      threadDisplayPreferences: [],
+    });
+
+    await store.update(() => undefined);
+    expect(JSON.parse(await readFile(registryPath, "utf8"))).toMatchObject({
+      schemaVersion: 5,
+      threadDisplayPreferences: [],
+    });
   });
 
   it("rejects registries created by an unsupported future version", async () => {
@@ -240,7 +274,7 @@ describe("RegistryStore", () => {
     });
   });
 
-  it("round-trips OpenCode threads and links in a version 4 registry", async () => {
+  it("round-trips OpenCode threads, links, and display preferences", async () => {
     const home = await mkdtemp(join(tmpdir(), "threadrelink-registry-opencode-"));
     cleanup.push(home);
     const store = new RegistryStore(home);
@@ -271,6 +305,13 @@ describe("RegistryStore", () => {
         createdAt: "2026-01-01T00:00:00.000Z",
         updatedAt: "2026-01-01T00:00:00.000Z",
       });
+      registry.threadDisplayPreferences.push({
+        provider: "opencode",
+        threadId: thread.id,
+        projectId: "project-1",
+        customLabel: "Pinned OpenCode session",
+        hidden: true,
+      });
     });
 
     const registry = await store.read();
@@ -279,5 +320,11 @@ describe("RegistryStore", () => {
       id: thread.id,
     });
     expect(registry.threadLinks[0]?.provider).toBe("opencode");
+    expect(registry.threadDisplayPreferences[0]).toMatchObject({
+      provider: "opencode",
+      threadId: thread.id,
+      customLabel: "Pinned OpenCode session",
+      hidden: true,
+    });
   });
 });
