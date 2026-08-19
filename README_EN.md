@@ -87,3 +87,16 @@ Issues and pull requests are welcome:
 - Contributions adding support for other coding agents (such as **Claude Code**, **Gemini CLI**, **GitHub Copilot**) are welcome; see the existing provider adapters in `packages/core/src/`;
 - Remove absolute paths from screenshots and diagnostics; never upload ChatAnchor registry files, Codex transcripts, or unredacted local paths;
 - Keep pull requests focused, describe the user impact, update tests or docs, and run `pnpm check` before submitting.
+
+## License
+
+GPL-3.0 © 2026 [ascendho](https://github.com/ascendho)
+
+This project is licensed under **GNU GPL-3.0**. In short:
+
+1. **Attribution required** — keep the copyright notice.
+2. **Derivatives must be open source** — any modification, fork, or redistribution must be released under GPL-3.0 (or a compatible license) with full source code.
+3. **Free to use, modify, and redistribute** — including commercial use; binary distributions must ship with the corresponding source.
+4. **No proprietary forks, paid-only redistribution, or relicensing to closed source.**
+
+Full terms: see [LICENSE](LICENSE).

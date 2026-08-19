@@ -87,3 +87,16 @@ ChatAnchor 完全在本机运行。默认只读取会话元数据（标题、时
 - 欢迎开发者提交对其它 coding agent（如 **Claude Code**、**Gemini CLI**、**GitHub Copilot** 等）的支持；可参考 `packages/core/src/` 中现有的 provider 适配器实现；
 - 截图和诊断信息必须移除绝对路径，绝不要上传 ChatAnchor registry、Codex transcript 或未脱敏的本地路径；
 - Pull Request 应保持聚焦，说明对用户的影响，更新相关测试或文档，并在提交前运行 `pnpm check`。
+
+## 许可证
+
+GPL-3.0 © 2026 [ascendho](https://github.com/ascendho)
+
+本项目采用 **GNU GPL-3.0** 协议，要点：
+
+1. **必须署名** — 保留版权声明
+2. **衍生品必须开源** — 任何修改版本、Fork、二次分发，必须以 GPL-3.0（或兼容协议）公开发布，提供完整源代码
+3. **自由使用 / 修改 / 分发** — 含商业用途；分发二进制时必须附带源代码
+4. **不允许闭源、专有化、仅付费分发**
+
+完整条款见 [LICENSE](LICENSE)。
