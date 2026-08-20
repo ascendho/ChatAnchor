@@ -14,14 +14,14 @@ ChatAnchor 是一个本地 VS Code 扩展：项目文件夹改名或移动后，
 
 ## 功能特性
 
-- 支持 **Codex**、**Cursor Agent CLI** 和 **OpenCode** 会话
+- 独立支持 **Codex**、**Cursor Agent CLI** 和 **OpenCode**：只显示本机存在 CLI 或历史数据的 provider，缺少其中一个不会影响其它 provider
 - 项目改名或移动后自动重连：基于 Git remote + commit、路径别名等保守证据，绝不只凭目录名关联
 - 在 ChatAnchor 视图里继续旧会话，或从标题栏 / provider 分组直接开启新会话
 - 跨 agent 迁移上下文：复制 Codex / Cursor `@path`、导出 OpenCode JSON，或生成精简 Markdown transcript
 - 整理会话列表：自定义描述、隐藏 / 恢复会话、Find Old Conversations 找回历史会话
 - 完全本地运行、无遥测、不上传任何数据
 
-> **OpenCode** 会话存在本地 `opencode.db` 中，没有独立原始会话文件，因此不提供 Reveal / Copy @ Path。需要把上下文交给其它 agent 时，优先使用 **Copy Compact @ Transcript**；确实需要 JSON `@path` 时，使用 **Export OpenCode JSON and Copy @ Path** 生成本地导出文件。
+> **OpenCode** 会话存在本地 `opencode.db` 中，没有独立原始会话文件，因此不提供 Reveal / Copy @ Path。需要把上下文交给其它 agent 时，优先使用 **Copy Compact @ Transcript**；确实需要 JSON `@path` 时，使用 **Export OpenCode JSON and Copy @ Path**。即使 OpenCode CLI 暂时不可用，显式导出仍可从本地数据库生成只读副本。
 
 ## 快速开始
 
@@ -40,7 +40,7 @@ ChatAnchor 是一个本地 VS Code 扩展：项目文件夹改名或移动后，
 
 2. **打开 ChatAnchor 视图**：点击活动栏的 ChatAnchor 图标；如果图标被隐藏，右键活动栏并启用 **ChatAnchor**。
 
-3. **启用元数据扫描**：点击「Enable Local Metadata Scan」，授权读取本机 **Codex** / **Cursor** / **OpenCode** 会话元数据。未显式授权的项目永远不会被扫描。
+3. **启用元数据扫描**：点击「Enable Local Metadata Scan」，授权读取本机已有的 **Codex** / **Cursor** / **OpenCode** 会话元数据。各 provider 独立检测，未安装的 agent 不会阻止其它会话显示；未显式授权的项目永远不会被扫描。
 
 4. **设置当前项目**：点击「Set Up This Project」。如果当前文件夹位于某个父级 Git 仓库内，会询问你选择独立目录身份还是父仓库身份。
 

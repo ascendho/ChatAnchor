@@ -1,7 +1,11 @@
 import { access } from "node:fs/promises";
 import { join } from "node:path";
 import { CodexAppServerClient, readCodexVersion } from "./codex.js";
-import { listCursorThreads, resolveCursorHome } from "./cursor.js";
+import {
+  listCursorThreads,
+  resolveAgentPath,
+  resolveCursorHome,
+} from "./cursor.js";
 import { errorMessage } from "./errors.js";
 import { readGitVersion } from "./git.js";
 import {
@@ -11,6 +15,7 @@ import {
 } from "./opencode.js";
 import { RegistryStore } from "./registry.js";
 import { ThreadRelinkService } from "./service.js";
+import { resolveExecutablePath } from "./path.js";
 import type {
   DoctorCheck,
   DoctorReport,
@@ -20,6 +25,7 @@ import type {
 export interface DoctorOptions {
   cwd?: string;
   codexPath?: string;
+  agentPath?: string;
   cursorHome?: string;
   openCodePath?: string;
   openCodeHome?: string;
@@ -46,8 +52,12 @@ export async function runDoctor(
     message: gitVersion ?? "Git is unavailable; only manual directory linking will work.",
   });
 
+  let detectedProviders = 0;
+  let codexCliAvailable = false;
   try {
     const version = await readCodexVersion(options.codexPath);
+    codexCliAvailable = true;
+    detectedProviders += 1;
     checks.push({
       name: "Codex CLI",
       status: "pass",
@@ -56,33 +66,58 @@ export async function runDoctor(
   } catch (error) {
     checks.push({
       name: "Codex CLI",
-      status: "fail",
-      message: errorMessage(error),
+      status: "warn",
+      message: `${errorMessage(error)} Codex support is disabled until the CLI is available.`,
     });
   }
 
   const factory =
     options.historyAdapterFactory
     ?? (() => CodexAppServerClient.start({ codexPath: options.codexPath }));
-  try {
-    const adapter = await factory();
-    try {
-      const threads = await adapter.listThreads({ includeArchived: false });
-      checks.push({
-        name: "Codex app-server",
-        status: "pass",
-        message: `Connected successfully; ${threads.length} active conversations visible.`,
-      });
-    } finally {
-      await adapter.close();
-    }
-  } catch (error) {
+  if (!codexCliAvailable && !options.historyAdapterFactory) {
     checks.push({
       name: "Codex app-server",
-      status: "fail",
-      message: errorMessage(error),
+      status: "warn",
+      message: "Skipped because the optional Codex CLI is unavailable.",
     });
+  } else {
+    try {
+      const adapter = await factory();
+      try {
+        const threads = await adapter.listThreads({ includeArchived: false });
+        if (!codexCliAvailable) {
+          detectedProviders += 1;
+        }
+        checks.push({
+          name: "Codex app-server",
+          status: "pass",
+          message: `Connected successfully; ${threads.length} active conversations visible.`,
+        });
+      } finally {
+        await adapter.close();
+      }
+    } catch (error) {
+      checks.push({
+        name: "Codex app-server",
+        status: codexCliAvailable ? "fail" : "warn",
+        message: codexCliAvailable
+          ? errorMessage(error)
+          : "Skipped because the optional Codex CLI is unavailable.",
+      });
+    }
   }
+
+  const cursorCli = resolveExecutablePath(resolveAgentPath(options.agentPath));
+  if (cursorCli) {
+    detectedProviders += 1;
+  }
+  checks.push({
+    name: "Cursor Agent CLI",
+    status: cursorCli ? "pass" : "warn",
+    message: cursorCli
+      ? "Available for starting and resuming Cursor conversations."
+      : "Optional Cursor Agent CLI is unavailable; local history can still be listed when present.",
+  });
 
   const cursorHome = resolveCursorHome(options.cursorHome);
   try {
@@ -91,6 +126,9 @@ export async function runDoctor(
       projectPaths: [options.cwd ?? process.cwd()],
       cursorHome,
     });
+    if (!cursorCli) {
+      detectedProviders += 1;
+    }
     checks.push({
       name: "Cursor Agent CLI home",
       status: "pass",
@@ -106,8 +144,11 @@ export async function runDoctor(
     });
   }
 
+  let openCodeCliAvailable = false;
   try {
     const version = await readOpenCodeVersion(options.openCodePath);
+    openCodeCliAvailable = true;
+    detectedProviders += 1;
     checks.push({
       name: "OpenCode CLI",
       status: "pass",
@@ -116,8 +157,8 @@ export async function runDoctor(
   } catch (error) {
     checks.push({
       name: "OpenCode CLI",
-      status: "fail",
-      message: errorMessage(error),
+      status: "warn",
+      message: `${errorMessage(error)} OpenCode history remains available when its local database exists.`,
     });
   }
 
@@ -126,7 +167,11 @@ export async function runDoctor(
     await access(join(openCodeHome, "opencode.db"));
     const openCodeThreads = await listOpenCodeThreads({
       openCodeHome,
+      strict: true,
     });
+    if (!openCodeCliAvailable) {
+      detectedProviders += 1;
+    }
     checks.push({
       name: "OpenCode data",
       status: "pass",
@@ -142,11 +187,20 @@ export async function runDoctor(
     });
   }
 
+  if (detectedProviders === 0) {
+    checks.push({
+      name: "Supported agents",
+      status: "fail",
+      message: "No supported agent CLI or local conversation history was found.",
+    });
+  }
+
   try {
     const probe = await new ThreadRelinkService({
       registryHome: options.registryHome,
       legacyRegistryHome: options.legacyRegistryHome,
       codexPath: options.codexPath,
+      agentPath: options.agentPath,
       cursorHome: options.cursorHome,
       openCodePath: options.openCodePath,
       openCodeHome: options.openCodeHome,

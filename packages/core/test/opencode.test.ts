@@ -464,12 +464,37 @@ describe("OpenCode adapter", () => {
         baseDir: outputDir,
         openCodeHome,
         openCodePath: fakeOpenCode,
-      })).rejects.toThrow("local database fallback failed");
+      })).rejects.toThrow("local database fallback both failed");
       await expect(readFile(original.filePath, "utf8")).resolves.toBe(
         "{\"version\":1}",
       );
       await expect(readdir(join(outputDir, "chatanchor-opencode-exports")))
         .resolves.toEqual(["chatanchor-opencode-ses_invalid.json"]);
+    },
+  );
+
+  executableScriptTest(
+    "uses the database fallback when the OpenCode CLI is missing",
+    async () => {
+      const outputDir = await mkdtemp(
+        join(tmpdir(), "threadrelink-opencode-export-no-cli-"),
+      );
+      const openCodeHome = await mkdtemp(
+        join(tmpdir(), "threadrelink-opencode-home-no-cli-"),
+      );
+      cleanup.push(outputDir, openCodeHome);
+      createExportFixtureDatabase(openCodeHome);
+
+      const result = await exportOpenCodeSessionToTempFile("ses_invalid", {
+        baseDir: outputDir,
+        openCodeHome,
+        openCodePath: join(outputDir, "missing-opencode"),
+      });
+
+      expect(result.exportSource).toBe("database-fallback");
+      await expect(readFile(result.filePath, "utf8")).resolves.toContain(
+        "opencode-db-fallback",
+      );
     },
   );
 

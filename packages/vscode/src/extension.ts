@@ -149,6 +149,7 @@ function makeService(): ThreadRelinkService {
   const settings = readSettings();
   return new ThreadRelinkService({
     codexPath: settings.codexPath,
+    agentPath: settings.agentPath,
     cursorHome: settings.cursorHome,
     openCodePath: settings.openCodePath,
     openCodeHome: settings.openCodeHome,
@@ -423,7 +424,27 @@ export async function activate(
   };
 
   const chooseAgentProvider = async (): Promise<ConversationProvider | undefined> => {
-    const selected = await vscode.window.showQuickPick(AGENT_PROVIDER_PICKS, {
+    const settings = readSettings();
+    const paths: Record<ConversationProvider, string> = {
+      codex: settings.codexPath,
+      cursor: settings.agentPath,
+      opencode: settings.openCodePath,
+    };
+    const available = AGENT_PROVIDER_PICKS.filter((item) =>
+      resolveExecutablePath(paths[item.provider]) !== null
+    );
+    if (available.length === 0) {
+      void vscode.window.showInformationMessage(
+        "ChatAnchor could not find a supported agent CLI.",
+        "Run Diagnostics",
+      ).then((choice) => {
+        if (choice === "Run Diagnostics") {
+          void vscode.commands.executeCommand("threadrelink.doctor");
+        }
+      });
+      return undefined;
+    }
+    const selected = await vscode.window.showQuickPick(available, {
       placeHolder: "Choose an agent CLI to start",
       ignoreFocusOut: true,
     });
@@ -476,7 +497,7 @@ export async function activate(
     if (!vscode.workspace.isTrusted) {
       provider.setWorkspaces([]);
       void vscode.window.showWarningMessage(
-        "Trust this workspace before ChatAnchor can start Codex.",
+        "Trust this workspace before ChatAnchor can scan local agent metadata.",
       );
       return;
     }
@@ -1611,6 +1632,7 @@ export async function activate(
       const report = await runDoctor({
         cwd: folder.uri.fsPath,
         codexPath: settings.codexPath,
+        agentPath: settings.agentPath,
         cursorHome: settings.cursorHome,
         openCodePath: settings.openCodePath,
         openCodeHome: settings.openCodeHome,

@@ -1,11 +1,21 @@
 import { randomUUID } from "node:crypto";
 import { stat } from "node:fs/promises";
 import { basename, resolve } from "node:path";
-import { CodexAppServerClient, runCodexResume } from "./codex.js";
+import {
+  CodexAppServerClient,
+  resolveCodexPath,
+  runCodexResume,
+} from "./codex.js";
 import { resolveConversationFilePath } from "./conversation-path.js";
-import { listCursorThreads } from "./cursor.js";
-import { ThreadRelinkError } from "./errors.js";
-import { listOpenCodeThreads } from "./opencode.js";
+import {
+  listCursorThreads,
+  resolveAgentPath,
+} from "./cursor.js";
+import { errorMessage, ThreadRelinkError } from "./errors.js";
+import {
+  listOpenCodeThreads,
+  resolveOpenCodePath,
+} from "./opencode.js";
 import {
   ensureGitProjectId,
   excludeFolderIdentity,
@@ -29,6 +39,7 @@ import {
   normalizeAbsolutePath,
   pathKey,
   relativeToRoot,
+  resolveExecutablePath,
 } from "./path.js";
 import { RegistryStore } from "./registry.js";
 import type {
@@ -40,6 +51,7 @@ import type {
   MatchDecision,
   ProjectProbe,
   ProjectRecord,
+  ProviderSyncStatus,
   RegistryFile,
   RelocationReport,
   ResumeTarget,
@@ -59,6 +71,7 @@ export interface ThreadRelinkServiceOptions {
   legacyRegistryHome?: string;
   codexPath?: string;
   codexHome?: string;
+  agentPath?: string;
   cursorHome?: string;
   openCodePath?: string;
   openCodeHome?: string;
@@ -89,6 +102,14 @@ export type RepoRecallServiceOptions = ThreadRelinkServiceOptions;
 interface RelocationObservation {
   previousPath: string;
   currentPath: string;
+}
+
+interface ProviderScan {
+  provider: ConversationProvider;
+  canLaunch: boolean;
+  scanned: boolean;
+  threads: ThreadMetadata[];
+  error: string | null;
 }
 
 function upsertProject(
@@ -332,10 +353,12 @@ export class ThreadRelinkService {
   public readonly registry: RegistryStore;
   public readonly codexPath?: string;
   public readonly codexHome?: string;
+  public readonly agentPath?: string;
   public readonly cursorHome?: string;
   public readonly openCodePath?: string;
   public readonly openCodeHome?: string;
   private readonly historyAdapterFactory: HistoryAdapterFactory;
+  private readonly hasCustomHistoryAdapterFactory: boolean;
   private readonly now: () => Date;
 
   public constructor(options: ThreadRelinkServiceOptions = {}) {
@@ -345,9 +368,11 @@ export class ThreadRelinkService {
     );
     this.codexPath = options.codexPath;
     this.codexHome = options.codexHome;
+    this.agentPath = options.agentPath;
     this.cursorHome = options.cursorHome;
     this.openCodePath = options.openCodePath;
     this.openCodeHome = options.openCodeHome;
+    this.hasCustomHistoryAdapterFactory = options.historyAdapterFactory != null;
     this.historyAdapterFactory =
       options.historyAdapterFactory
       ?? (() => CodexAppServerClient.start({ codexPath: this.codexPath }));
@@ -732,28 +757,162 @@ export class ThreadRelinkService {
 
   public async sync(inputPath = process.cwd()): Promise<SyncResult> {
     const { project, context, relocation } = await this.readyProject(inputPath);
-    const adapter = await this.historyAdapterFactory();
-    let codexThreads: ThreadMetadata[];
-    try {
-      codexThreads = await adapter.listThreads({ includeArchived: true });
-    } finally {
-      await adapter.close();
-    }
-
+    const registry = await this.registry.read();
     const projectPaths = [
       context.root,
       ...project.aliases.map((alias) => alias.path),
     ];
-    const cursorThreads = await listCursorThreads({
-      projectPaths,
-      cursorHome: this.cursorHome,
-    });
-    const openCodeThreads = await listOpenCodeThreads({
-      openCodeHome: this.openCodeHome,
-    });
-    const threads = [...codexThreads, ...cursorThreads, ...openCodeThreads];
+    const codexCanLaunch = this.hasCustomHistoryAdapterFactory
+      || resolveExecutablePath(resolveCodexPath(this.codexPath)) !== null;
+    const cursorCanLaunch =
+      resolveExecutablePath(resolveAgentPath(this.agentPath)) !== null;
+    const openCodeCanLaunch =
+      resolveExecutablePath(resolveOpenCodePath(this.openCodePath)) !== null;
 
-    const registry = await this.registry.read();
+    const scans = await Promise.all([
+      (async (): Promise<ProviderScan> => {
+        if (!codexCanLaunch) {
+          return {
+            provider: "codex",
+            canLaunch: false,
+            scanned: false,
+            threads: [],
+            error: null,
+          };
+        }
+        try {
+          const adapter = await this.historyAdapterFactory();
+          try {
+            return {
+              provider: "codex",
+              canLaunch: codexCanLaunch,
+              scanned: true,
+              threads: await adapter.listThreads({ includeArchived: true }),
+              error: null,
+            };
+          } finally {
+            await adapter.close();
+          }
+        } catch (error) {
+          return {
+            provider: "codex",
+            canLaunch: codexCanLaunch,
+            scanned: false,
+            threads: [],
+            error: errorMessage(error),
+          };
+        }
+      })(),
+      (async (): Promise<ProviderScan> => {
+        try {
+          return {
+            provider: "cursor",
+            canLaunch: cursorCanLaunch,
+            scanned: true,
+            threads: await listCursorThreads({
+              projectPaths,
+              cursorHome: this.cursorHome,
+            }),
+            error: null,
+          };
+        } catch (error) {
+          return {
+            provider: "cursor",
+            canLaunch: cursorCanLaunch,
+            scanned: false,
+            threads: [],
+            error: errorMessage(error),
+          };
+        }
+      })(),
+      (async (): Promise<ProviderScan> => {
+        try {
+          return {
+            provider: "opencode",
+            canLaunch: openCodeCanLaunch,
+            scanned: true,
+            threads: await listOpenCodeThreads({
+              openCodeHome: this.openCodeHome,
+              strict: true,
+            }),
+            error: null,
+          };
+        } catch (error) {
+          return {
+            provider: "opencode",
+            canLaunch: openCodeCanLaunch,
+            scanned: false,
+            threads: [],
+            error: errorMessage(error),
+          };
+        }
+      })(),
+    ]);
+
+    const cachedLinkedThreads = (provider: ConversationProvider) => {
+      const ids = new Set(
+        registry.threadLinks
+          .filter((link) =>
+            link.projectId === project.id && link.provider === provider
+          )
+          .map((link) => link.threadId),
+      );
+      return registry.threads.filter((thread) =>
+        thread.provider === provider && ids.has(thread.id)
+      );
+    };
+    const freshThreads = scans.flatMap((scan) => scan.threads);
+    const threadsByKey = new Map(
+      freshThreads.map((thread) => [
+        threadKey(thread.provider, thread.id),
+        thread,
+      ]),
+    );
+    for (const scan of scans) {
+      if (scan.scanned && !scan.error) {
+        continue;
+      }
+      for (const thread of cachedLinkedThreads(scan.provider)) {
+        threadsByKey.set(threadKey(thread.provider, thread.id), thread);
+      }
+    }
+    const threads = [...threadsByKey.values()];
+    const providers: ProviderSyncStatus[] = scans.map((scan) => {
+      const fallbackCount = scan.scanned
+        ? 0
+        : cachedLinkedThreads(scan.provider).length;
+      if (scan.error) {
+        return {
+          provider: scan.provider,
+          availability: "error",
+          canLaunch: scan.canLaunch,
+          message:
+            "Conversation metadata scan failed. Run ChatAnchor diagnostics for details.",
+        };
+      }
+      if (scan.canLaunch) {
+        return {
+          provider: scan.provider,
+          availability: "ready",
+          canLaunch: true,
+          message: null,
+        };
+      }
+      if (scan.threads.length > 0 || fallbackCount > 0) {
+        return {
+          provider: scan.provider,
+          availability: "history-only",
+          canLaunch: false,
+          message: "CLI unavailable; local history remains available.",
+        };
+      }
+      return {
+        provider: scan.provider,
+        availability: "unavailable",
+        canLaunch: false,
+        message: null,
+      };
+    });
     const linkByThread = new Map(
       registry.threadLinks.map((link) => [
         threadKey(link.provider, link.threadId),
@@ -810,7 +969,7 @@ export class ThreadRelinkService {
     );
     const timestamp = this.now().toISOString();
     await this.registry.update((draft) => {
-      upsertSnapshots(draft, threads);
+      upsertSnapshots(draft, freshThreads);
       const links = new Map(
         draft.threadLinks.map((link) => [
           threadKey(link.provider, link.threadId),
@@ -871,6 +1030,7 @@ export class ThreadRelinkService {
 
     return {
       project,
+      providers,
       linked,
       suggested,
       ignored,

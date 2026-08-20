@@ -1,6 +1,11 @@
 export const REGISTRY_SCHEMA_VERSION = 5 as const;
 
 export type ConversationProvider = "codex" | "cursor" | "opencode";
+export type ProviderAvailability =
+  | "ready"
+  | "history-only"
+  | "error"
+  | "unavailable";
 export type ProjectKind = "git" | "directory";
 export type LinkStatus = "linked" | "suggested" | "ignored" | "unlinked";
 export type LinkSource = "automatic" | "manual";
@@ -124,8 +129,16 @@ export interface MatchDecision {
   display?: ThreadDisplayState;
 }
 
+export interface ProviderSyncStatus {
+  provider: ConversationProvider;
+  availability: ProviderAvailability;
+  canLaunch: boolean;
+  message: string | null;
+}
+
 export interface SyncResult {
   project: ProjectRecord;
+  providers: ProviderSyncStatus[];
   linked: MatchDecision[];
   suggested: MatchDecision[];
   ignored: MatchDecision[];

@@ -147,9 +147,9 @@ function executableSearchDirs(): string[] {
 }
 
 /**
- * Resolve a configured executable to an absolute path. Paths pass through
- * unchanged; bare command names are looked up on the host PATH, the login
- * shell PATH, and well-known directories. Returns null when not found.
+ * Resolve a configured executable to an existing absolute path. Bare command
+ * names are looked up on the host PATH, the login shell PATH, and well-known
+ * directories. Returns null when the configured path is not executable.
  */
 export function resolveExecutablePath(command: string): string | null {
   const trimmed = command.trim();
@@ -162,7 +162,16 @@ export function resolveExecutablePath(command: string): string | null {
     || trimmed.includes("/")
     || trimmed.includes("\\")
   ) {
-    return normalizeAbsolutePath(trimmed);
+    const candidate = normalizeAbsolutePath(trimmed);
+    try {
+      accessSync(
+        candidate,
+        process.platform === "win32" ? constants.F_OK : constants.X_OK,
+      );
+      return candidate;
+    } catch {
+      return null;
+    }
   }
   const hit = findExecutableOnPath(trimmed, executableSearchDirs());
   return hit ? normalize(hit) : null;

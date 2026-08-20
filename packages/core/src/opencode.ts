@@ -295,31 +295,27 @@ export async function exportOpenCodeSessionToTempFile(
   try {
     await exit;
     await outputFinished;
-    try {
-      JSON.parse(await readFile(tempPath, "utf8"));
-    } catch (error) {
-      try {
-        const fallbackJson = readOpenCodeExportJsonFromDatabase(
-          id,
-          options.openCodeHome,
-        );
-        await writeFile(tempPath, fallbackJson, "utf8");
-        exportSource = "database-fallback";
-      } catch (fallbackError) {
-        throw new ThreadRelinkError(
-          "OPENCODE_EXPORT_INVALID_JSON",
-          `OpenCode export produced invalid JSON and the local database fallback failed. Try exporting the session again or run "opencode export ${id}" manually to inspect the CLI output. Export parse error: ${errorMessage(error)}. Fallback error: ${errorMessage(fallbackError)}`,
-          { cause: fallbackError },
-        );
-      }
-    }
-    await rename(tempPath, filePath);
-  } catch (error) {
+    JSON.parse(await readFile(tempPath, "utf8"));
+  } catch (exportError) {
     output.destroy();
     await outputFinished.catch(() => undefined);
-    await rm(tempPath, { force: true });
-    throw error;
+    try {
+      const fallbackJson = readOpenCodeExportJsonFromDatabase(
+        id,
+        options.openCodeHome,
+      );
+      await writeFile(tempPath, fallbackJson, "utf8");
+      exportSource = "database-fallback";
+    } catch (fallbackError) {
+      await rm(tempPath, { force: true });
+      throw new ThreadRelinkError(
+        "OPENCODE_EXPORT_UNAVAILABLE",
+        `OpenCode export and the local database fallback both failed. Export error: ${errorMessage(exportError)}. Fallback error: ${errorMessage(fallbackError)}`,
+        { cause: fallbackError },
+      );
+    }
   }
+  await rename(tempPath, filePath);
   return {
     atPath: `@${filePath}`,
     exportSource,
@@ -447,6 +443,7 @@ export function mapOpenCodeRowToThread(
  */
 export async function listOpenCodeThreads(options: {
   openCodeHome?: string;
+  strict?: boolean;
 } = {}): Promise<ThreadMetadata[]> {
   const home = resolveOpenCodeHome(options.openCodeHome);
   const dbPath = join(home, "opencode.db");
@@ -482,7 +479,14 @@ export async function listOpenCodeThreads(options: {
       }
     }
     return threads.sort((left, right) => right.updatedAt - left.updatedAt);
-  } catch {
+  } catch (error) {
+    if (options.strict) {
+      throw new ThreadRelinkError(
+        "OPENCODE_METADATA_UNAVAILABLE",
+        `Could not read OpenCode conversation metadata: ${errorMessage(error)}`,
+        { cause: error },
+      );
+    }
     return [];
   } finally {
     database?.close();

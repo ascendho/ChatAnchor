@@ -2,7 +2,7 @@
   "name": "threadrelink",
   "displayName": "ChatAnchor",
   "description": "A VS Code extension that keeps AI coding agent conversations connected to their projects after folders are renamed or moved.",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "icon": "resources/threadrelink.png",
   "publisher": "ascendho",
   "repository": {
@@ -216,7 +216,7 @@
       {
         "id": "threadrelink.gettingStarted",
         "title": "Keep AI conversations after a project rename",
-        "description": "Initialize once, then resume the same local Codex, Cursor, or OpenCode thread from any renamed or moved path.",
+        "description": "Initialize once, then resume available local Codex, Cursor, or OpenCode threads from any renamed or moved path. Each provider is detected independently.",
         "steps": [
           {
             "id": "threadrelink.gettingStarted.openView",
@@ -352,52 +352,52 @@
       "view/item/context": [
         {
           "command": "threadrelink.startNewSession",
-          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linked\\.(codex|cursor|opencode)$/",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linked\\.(codex|cursor|opencode)\\.launchable$/",
           "group": "inline@1"
         },
         {
           "command": "threadrelink.resume",
-          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)(\\.hidden)?$/",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)\\.launchable(\\.hidden)?$/",
           "group": "inline@1"
         },
         {
           "command": "threadrelink.copyAtPath",
-          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)(\\.hidden)?$/",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)\\.(launchable|historyOnly)(\\.hidden)?$/",
           "group": "inline@2"
         },
         {
           "command": "threadrelink.exportOpenCodeAtPath",
-          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.opencode(\\.hidden)?$/",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.opencode\\.(launchable|historyOnly)(\\.hidden)?$/",
           "group": "inline@2"
         },
         {
           "command": "threadrelink.copyCompactAtPath",
-          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)(\\.hidden)?$/",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)\\.(launchable|historyOnly)(\\.hidden)?$/",
           "group": "manage@3.5"
         },
         {
           "command": "threadrelink.revealLocation",
-          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)(\\.hidden)?$/",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)\\.(launchable|historyOnly)(\\.hidden)?$/",
           "group": "manage@3.6"
         },
         {
           "command": "threadrelink.editDescription",
-          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)(\\.hidden)?$/",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)\\.(launchable|historyOnly)(\\.hidden)?$/",
           "group": "manage@2"
         },
         {
           "command": "threadrelink.hideConversation",
-          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)$/",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)\\.(launchable|historyOnly)$/",
           "group": "manage@3"
         },
         {
           "command": "threadrelink.showConversation",
-          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)\\.hidden$/",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)\\.(launchable|historyOnly)\\.hidden$/",
           "group": "manage@3"
         },
         {
           "command": "threadrelink.manageLink",
-          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)(\\.hidden)?$/",
+          "when": "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)\\.(launchable|historyOnly)(\\.hidden)?$/",
           "group": "manage@4"
         }
       ]
@@ -433,7 +433,7 @@
         "threadrelink.autoSync": {
           "type": "boolean",
           "default": true,
-          "description": "Refresh local Codex, Cursor, and OpenCode conversation metadata when an explicitly set-up, trusted project opens, after consent."
+          "description": "Refresh metadata for independently detected Codex, Cursor, and OpenCode providers when an explicitly set-up, trusted project opens, after consent."
         },
         "threadrelink.registryHome": {
           "type": "string",

@@ -5,7 +5,6 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   findExecutableOnPath,
   isPathInside,
-  normalizeAbsolutePath,
   pathKey,
   relativeToRoot,
   resolveExecutablePath,
@@ -58,13 +57,15 @@ describe("path helpers", () => {
     expect(findExecutableOnPath("fakecmd", [binDir], "linux")).toBeNull();
   });
 
-  it("passes explicit paths through and resolves nothing else", () => {
-    expect(resolveExecutablePath("/abs/path/opencode")).toBe(
-      normalizeAbsolutePath("/abs/path/opencode"),
-    );
-    expect(resolveExecutablePath("~/bin/opencode")).toBe(
-      normalizeAbsolutePath("~/bin/opencode"),
-    );
+  it("accepts existing explicit paths and rejects missing paths", async () => {
+    const binDir = await mkdtemp(join(tmpdir(), "threadrelink-explicit-bin-"));
+    cleanup.push(binDir);
+    const executable = join(binDir, "opencode");
+    await writeFile(executable, "#!/bin/sh\n", "utf8");
+    await chmod(executable, 0o755);
+
+    expect(resolveExecutablePath(executable)).toBe(executable);
+    expect(resolveExecutablePath(join(binDir, "missing"))).toBeNull();
     expect(resolveExecutablePath("not-a-real-command-xyz")).toBeNull();
     expect(resolveExecutablePath("")).toBeNull();
   });

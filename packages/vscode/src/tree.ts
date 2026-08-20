@@ -1,5 +1,9 @@
 import * as vscode from "vscode";
-import type { ConversationProvider, MatchDecision } from "@threadrelink/core";
+import type {
+  ConversationProvider,
+  MatchDecision,
+  ProviderSyncStatus,
+} from "@threadrelink/core";
 import {
   conversationLabel,
   relativeDate,
@@ -9,6 +13,8 @@ import {
   hiddenForProvider,
   isHiddenConversation,
   linkedForProvider,
+  providerStatus,
+  visibleProviderStatuses,
 } from "./conversation-display.js";
 
 const PROVIDER_CATEGORIES: ReadonlyArray<{
@@ -43,6 +49,7 @@ function providerCategoryNode(
     provider,
     decisions: linkedForProvider(workspace, provider, showHidden),
     hiddenCount: hiddenForProvider(workspace, provider).length,
+    status: providerStatus(workspace, provider),
   };
 }
 
@@ -57,6 +64,7 @@ export type ThreadRelinkTreeNode =
       provider: ConversationProvider;
       decisions: MatchDecision[];
       hiddenCount: number;
+      status: ProviderSyncStatus | undefined;
     }
   | {
       kind: "thread";
@@ -266,13 +274,24 @@ implements vscode.TreeDataProvider<ThreadRelinkTreeNode>, vscode.Disposable {
         label,
         this.preferredCollapsibleState,
       );
-      item.description = element.hiddenCount > 0
+      const countDescription = element.hiddenCount > 0
         ? this.showHiddenConversations
           ? `${element.decisions.length} total · ${element.hiddenCount} hidden shown`
           : `${element.decisions.length} visible · ${element.hiddenCount} hidden`
         : String(element.decisions.length);
+      item.description = [
+        countDescription,
+        element.status?.availability === "history-only"
+          ? "CLI unavailable"
+          : element.status?.availability === "error"
+            ? "scan failed"
+            : null,
+      ].filter(Boolean).join(" · ");
       item.iconPath = this.providerIcon(element.provider);
-      item.contextValue = `threadrelink.linked.${element.provider}`;
+      item.contextValue = [
+        `threadrelink.linked.${element.provider}`,
+        element.status?.canLaunch ? "launchable" : "historyOnly",
+      ].join(".");
       item.id =
         `category:${this.expansionEpoch}:${element.workspace.path}:${element.provider}`;
       return item;
@@ -331,6 +350,9 @@ implements vscode.TreeDataProvider<ThreadRelinkTreeNode>, vscode.Disposable {
       : this.providerIcon(decision.thread.provider);
     item.contextValue = [
       `threadrelink.linkedThread.${decision.thread.provider}`,
+      providerStatus(element.workspace, decision.thread.provider)?.canLaunch
+        ? "launchable"
+        : "historyOnly",
       decision.display?.hidden ? "hidden" : null,
     ].filter(Boolean).join(".");
     item.id =
@@ -394,32 +416,67 @@ implements vscode.TreeDataProvider<ThreadRelinkTreeNode>, vscode.Disposable {
         ];
       }
 
-      return PROVIDER_CATEGORIES.map(({ provider }) =>
-        providerCategoryNode(
-          element.workspace,
-          provider,
-          this.showHiddenConversations,
-        )
+      const visibleProviders = new Set(
+        visibleProviderStatuses(element.workspace).map((status) =>
+          status.provider
+        ),
       );
+      const categories = PROVIDER_CATEGORIES
+        .filter(({ provider }) => visibleProviders.has(provider))
+        .map(({ provider }) =>
+          providerCategoryNode(
+            element.workspace,
+            provider,
+            this.showHiddenConversations,
+          )
+        );
+      if (categories.length > 0) {
+        return categories;
+      }
+      return [
+        {
+          kind: "message",
+          label: "No supported local agents found.",
+          workspacePath: element.workspace.path,
+        },
+        {
+          kind: "action",
+          label: "Run Diagnostics",
+          command: "threadrelink.doctor",
+          icon: "stethoscope",
+          workspacePath: element.workspace.path,
+        },
+      ];
     }
     if (element.kind === "category") {
+      const children: ThreadRelinkTreeNode[] = [];
+      if (element.status?.availability === "error") {
+        children.push({
+          kind: "message",
+          label: element.status.message ?? "Conversation metadata scan failed.",
+          workspacePath: element.workspace.path,
+          provider: element.provider,
+        });
+      }
       if (element.decisions.length === 0) {
         const providerLabel = PROVIDER_LABEL[element.provider] ?? "Codex";
         const label = element.hiddenCount > 0 && !this.showHiddenConversations
           ? `No visible ${providerLabel} conversations for this project.`
           : `No ${providerLabel} conversations for this project.`;
-        return [{
+        children.push({
           kind: "message",
           label,
           workspacePath: element.workspace.path,
           provider: element.provider,
-        }];
+        });
+        return children;
       }
-      return element.decisions.map((decision) => ({
+      children.push(...element.decisions.map((decision) => ({
         kind: "thread" as const,
         workspace: element.workspace,
         decision,
-      }));
+      })));
+      return children;
     }
     return [];
   }

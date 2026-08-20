@@ -23,6 +23,7 @@ import {
   readFolderIdentity,
   removeFolderIdentity,
 } from "../src/identity.js";
+import { cursorChatBucketId } from "../src/cursor.js";
 import { ThreadRelinkService } from "../src/service.js";
 import type {
   HistoryAdapter,
@@ -258,6 +259,211 @@ describe("ThreadRelinkService", () => {
       cliVersion: "1.18.14",
     });
   }, 20_000);
+
+  it("keeps OpenCode available when Codex is not installed", async () => {
+    const base = await mkdtemp(join(tmpdir(), "threadrelink-optional-codex-"));
+    cleanup.push(base);
+    const root = join(base, "project");
+    const registryHome = join(base, "state");
+    const cursorHome = join(base, "cursor-home");
+    const openCodeHome = join(base, "opencode-home");
+    await mkdir(root);
+    await mkdir(cursorHome);
+    await mkdir(openCodeHome);
+    await execFileAsync("git", ["init", root]);
+
+    const database = new DatabaseSync(join(openCodeHome, "opencode.db"));
+    try {
+      database.exec(`
+        CREATE TABLE project (id TEXT PRIMARY KEY, worktree TEXT NOT NULL);
+        CREATE TABLE session (
+          id TEXT PRIMARY KEY,
+          project_id TEXT,
+          parent_id TEXT,
+          directory TEXT NOT NULL,
+          title TEXT NOT NULL,
+          version TEXT NOT NULL,
+          time_created INTEGER NOT NULL,
+          time_updated INTEGER NOT NULL,
+          time_archived INTEGER
+        );
+      `);
+      database.prepare(
+        "INSERT INTO project (id, worktree) VALUES (?, ?)",
+      ).run("project-optional", root);
+      database.prepare(
+        `INSERT INTO session
+           (id, project_id, parent_id, directory, title, version,
+            time_created, time_updated, time_archived)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        "ses_optional",
+        "project-optional",
+        null,
+        root,
+        "OpenCode without Codex",
+        "1.18.14",
+        1_700_000_000_000,
+        1_700_000_300_000,
+        null,
+      );
+    } finally {
+      database.close();
+    }
+
+    const service = new ThreadRelinkService({
+      registryHome,
+      codexPath: join(base, "missing-codex"),
+      agentPath: join(base, "missing-agent"),
+      cursorHome,
+      openCodePath: join(base, "missing-opencode"),
+      openCodeHome,
+    });
+    await service.initProject(root);
+    const result = await service.sync(root);
+
+    expect(result.linked.map((item) => item.thread.id))
+      .toEqual(["ses_optional"]);
+    expect(result.providers).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        provider: "codex",
+        availability: "unavailable",
+        canLaunch: false,
+      }),
+      expect.objectContaining({
+        provider: "opencode",
+        availability: "history-only",
+        canLaunch: false,
+      }),
+    ]));
+  });
+
+  it("preserves cached Codex links when the CLI becomes unavailable", async () => {
+    const base = await mkdtemp(join(tmpdir(), "threadrelink-cached-codex-"));
+    cleanup.push(base);
+    const root = join(base, "project");
+    const registryHome = join(base, "state");
+    const cursorHome = join(base, "cursor-home");
+    const openCodeHome = join(base, "opencode-home");
+    await mkdir(root);
+    await mkdir(cursorHome);
+    await mkdir(openCodeHome);
+    await execFileAsync("git", ["init", root]);
+    const thread: ThreadMetadata = {
+      provider: "codex",
+      id: "thread-cached",
+      name: "Cached Codex conversation",
+      preview: "Cached Codex conversation",
+      cwd: root,
+      createdAt: 1,
+      updatedAt: 2,
+      archived: false,
+      cliVersion: "0.145.0",
+      modelProvider: "openai",
+      gitInfo: null,
+    };
+    const initial = new ThreadRelinkService({
+      registryHome,
+      cursorHome,
+      openCodeHome,
+      historyAdapterFactory: async () => adapterFor([thread]),
+    });
+    await initial.initProject(root);
+    await initial.sync(root);
+
+    const withoutCodex = new ThreadRelinkService({
+      registryHome,
+      codexPath: join(base, "missing-codex"),
+      agentPath: join(base, "missing-agent"),
+      cursorHome,
+      openCodePath: join(base, "missing-opencode"),
+      openCodeHome,
+    });
+    const result = await withoutCodex.sync(root);
+
+    expect(result.linked.map((item) => item.thread.id))
+      .toEqual(["thread-cached"]);
+    expect(result.providers.find((status) => status.provider === "codex"))
+      .toMatchObject({
+        availability: "history-only",
+        canLaunch: false,
+      });
+  });
+
+  it("succeeds with an empty result when no supported provider is present", async () => {
+    const base = await mkdtemp(join(tmpdir(), "threadrelink-no-providers-"));
+    cleanup.push(base);
+    const root = join(base, "project");
+    const cursorHome = join(base, "cursor-home");
+    const openCodeHome = join(base, "opencode-home");
+    await mkdir(root);
+    await mkdir(cursorHome);
+    await mkdir(openCodeHome);
+    await execFileAsync("git", ["init", root]);
+    const service = new ThreadRelinkService({
+      registryHome: join(base, "state"),
+      codexPath: join(base, "missing-codex"),
+      agentPath: join(base, "missing-agent"),
+      cursorHome,
+      openCodePath: join(base, "missing-opencode"),
+      openCodeHome,
+    });
+    await service.initProject(root);
+
+    const result = await service.sync(root);
+
+    expect(result.linked).toEqual([]);
+    expect(result.providers.every((status) =>
+      status.availability === "unavailable"
+    )).toBe(true);
+  });
+
+  it("isolates a Codex scan error from Cursor metadata", async () => {
+    const base = await mkdtemp(join(tmpdir(), "threadrelink-provider-error-"));
+    cleanup.push(base);
+    const root = join(base, "project");
+    const cursorHome = join(base, "cursor-home");
+    const chatId = "cursor-chat";
+    const chatDirectory = join(
+      cursorHome,
+      "chats",
+      cursorChatBucketId(root),
+      chatId,
+    );
+    await mkdir(root);
+    await mkdir(chatDirectory, { recursive: true });
+    await execFileAsync("git", ["init", root]);
+    await writeFile(
+      join(chatDirectory, "meta.json"),
+      `${JSON.stringify({
+        schemaVersion: 1,
+        title: "Cursor survives Codex failure",
+        cwd: root,
+        createdAtMs: 1_700_000_000_000,
+        updatedAtMs: 1_700_000_300_000,
+        hasConversation: true,
+      })}\n`,
+      "utf8",
+    );
+    const service = new ThreadRelinkService({
+      registryHome: join(base, "state"),
+      agentPath: join(base, "missing-agent"),
+      cursorHome,
+      openCodeHome: join(base, "opencode-home"),
+      historyAdapterFactory: async () => {
+        throw new Error("Codex app-server failed");
+      },
+    });
+    await service.initProject(root);
+
+    const result = await service.sync(root);
+
+    expect(result.linked.map((item) => item.thread.id)).toEqual([chatId]);
+    expect(result.providers.find((status) => status.provider === "codex"))
+      .toMatchObject({ availability: "error" });
+    expect(result.providers.find((status) => status.provider === "cursor"))
+      .toMatchObject({ availability: "history-only" });
+  });
 
   it("resolves OpenCode resume targets after a project directory is renamed", async () => {
     const base = await mkdtemp(join(tmpdir(), "threadrelink-opencode-move-"));

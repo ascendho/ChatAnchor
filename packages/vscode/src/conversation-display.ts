@@ -1,4 +1,8 @@
-import type { ConversationProvider, MatchDecision } from "@threadrelink/core";
+import type {
+  ConversationProvider,
+  MatchDecision,
+  ProviderSyncStatus,
+} from "@threadrelink/core";
 import type { WorkspaceResult } from "./view-model.js";
 
 export function isHiddenConversation(decision: MatchDecision): boolean {
@@ -30,4 +34,21 @@ export function hiddenForProvider(
 
 export function hiddenConversationCount(workspace: WorkspaceResult): number {
   return (workspace.sync?.linked ?? []).filter(isHiddenConversation).length;
+}
+
+export function providerStatus(
+  workspace: WorkspaceResult,
+  provider: ConversationProvider,
+): ProviderSyncStatus | undefined {
+  return workspace.sync?.providers.find((status) =>
+    status.provider === provider
+  );
+}
+
+export function visibleProviderStatuses(
+  workspace: WorkspaceResult,
+): ProviderSyncStatus[] {
+  return (workspace.sync?.providers ?? []).filter(
+    (status) => status.availability !== "unavailable",
+  );
 }

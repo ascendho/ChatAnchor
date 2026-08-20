@@ -225,7 +225,7 @@ describe("VS Code extension manifest", () => {
     expect(startNewSessionMenus).toEqual([
       expect.objectContaining({
         when:
-          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linked\\.(codex|cursor|opencode)$/",
+          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linked\\.(codex|cursor|opencode)\\.launchable$/",
         group: "inline@1",
       }),
     ]);
@@ -236,7 +236,7 @@ describe("VS Code extension manifest", () => {
     expect(copyAtMenus).toEqual([
       expect.objectContaining({
         when:
-          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)(\\.hidden)?$/",
+          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)\\.(launchable|historyOnly)(\\.hidden)?$/",
         group: "inline@2",
       }),
     ]);
@@ -249,7 +249,7 @@ describe("VS Code extension manifest", () => {
     expect(copyOpenCodeExportMenus).toEqual([
       expect.objectContaining({
         when:
-          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.opencode(\\.hidden)?$/",
+          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.opencode\\.(launchable|historyOnly)(\\.hidden)?$/",
         group: "inline@2",
       }),
     ]);
@@ -260,7 +260,7 @@ describe("VS Code extension manifest", () => {
     expect(copyCompactMenus).toEqual([
       expect.objectContaining({
         when:
-          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)(\\.hidden)?$/",
+          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)\\.(launchable|historyOnly)(\\.hidden)?$/",
         group: "manage@3.5",
       }),
     ]);
@@ -271,7 +271,7 @@ describe("VS Code extension manifest", () => {
     expect(revealMenus).toEqual([
       expect.objectContaining({
         when:
-          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)(\\.hidden)?$/",
+          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor)\\.(launchable|historyOnly)(\\.hidden)?$/",
         group: "manage@3.6",
       }),
     ]);
@@ -296,7 +296,7 @@ describe("VS Code extension manifest", () => {
       expect.arrayContaining([
         expect.objectContaining({
           when:
-            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)(\\.hidden)?$/",
+            "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)\\.launchable(\\.hidden)?$/",
           group: "inline@1",
         }),
       ]),
@@ -308,7 +308,7 @@ describe("VS Code extension manifest", () => {
     expect(hideMenus).toEqual([
       expect.objectContaining({
         when:
-          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)$/",
+          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)\\.(launchable|historyOnly)$/",
         group: "manage@3",
       }),
     ]);
@@ -319,7 +319,7 @@ describe("VS Code extension manifest", () => {
     expect(showMenus).toEqual([
       expect.objectContaining({
         when:
-          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)\\.hidden$/",
+          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)\\.(launchable|historyOnly)\\.hidden$/",
         group: "manage@3",
       }),
     ]);
@@ -329,7 +329,7 @@ describe("VS Code extension manifest", () => {
     expect(manageLinkMenus).toEqual([
       expect.objectContaining({
         when:
-          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)(\\.hidden)?$/",
+          "view == threadrelink.conversations && viewItem =~ /^threadrelink\\.linkedThread\\.(codex|cursor|opencode)\\.(launchable|historyOnly)(\\.hidden)?$/",
         group: "manage@4",
       }),
     ]);

@@ -14,14 +14,14 @@ ChatAnchor is a local VS Code extension: after a project folder is renamed or mo
 
 ## Features
 
-- Supports **Codex**, **Cursor Agent CLI**, and **OpenCode** conversations
+- Detects **Codex**, **Cursor Agent CLI**, and **OpenCode** independently, showing only providers with a local CLI or history so one missing agent never blocks the others
 - Automatically reconnects after a project is renamed or moved, based on conservative evidence such as Git remote + commit and path aliases — never links by directory name alone
 - Resume existing conversations or start new Codex / Cursor / OpenCode sessions directly from the ChatAnchor view
 - Carry context across agents: copy Codex / Cursor `@path`, export OpenCode JSON, or create compact Markdown transcripts
 - Organize conversations with custom descriptions, hide / unhide controls, and Find Old Conversations
 - Runs entirely locally — no telemetry, nothing uploaded
 
-> **OpenCode** conversations live in the local `opencode.db` and do not have standalone raw files, so Reveal / Copy @ Path is unavailable for them. For cross-agent handoff, prefer **Copy Compact @ Transcript**; use **Export OpenCode JSON and Copy @ Path** when you need a generated JSON `@path`.
+> **OpenCode** conversations live in the local `opencode.db` and do not have standalone raw files, so Reveal / Copy @ Path is unavailable for them. For cross-agent handoff, prefer **Copy Compact @ Transcript**; use **Export OpenCode JSON and Copy @ Path** when you need a generated JSON `@path`. An explicit export can use a read-only database fallback even when the OpenCode CLI is temporarily unavailable.
 
 ## Getting started
 
@@ -40,7 +40,7 @@ ChatAnchor is a local VS Code extension: after a project folder is renamed or mo
 
 2. **Open the ChatAnchor view**: click the ChatAnchor icon in the Activity Bar; if it is hidden, right-click the Activity Bar and enable **ChatAnchor**.
 
-3. **Enable metadata scan**: click "Enable Local Metadata Scan" to allow reading local **Codex** / **Cursor** / **OpenCode** conversation metadata. Projects are never scanned without explicit consent.
+3. **Enable metadata scan**: click "Enable Local Metadata Scan" to allow reading metadata for locally available **Codex** / **Cursor** / **OpenCode** conversations. Providers are detected independently, so a missing agent never blocks the others; projects are never scanned without explicit consent.
 
 4. **Set up the current project**: click "Set Up This Project". If the folder is inside a parent Git repository, you will be asked to choose an independent directory identity or the parent repository identity.
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.11
+
+- Detect Codex, Cursor, and OpenCode independently so a missing provider no
+  longer blocks the entire conversations view.
+- Hide providers with neither a local CLI nor history, while retaining useful
+  history actions when a provider CLI is temporarily unavailable.
+- Fall back to the read-only OpenCode database for explicit exports when the
+  OpenCode CLI cannot run.
+
 ## 1.0.10
 
 - Streamline the GitHub and Marketplace README feature, link-management, and

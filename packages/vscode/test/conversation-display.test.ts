@@ -4,8 +4,14 @@ import {
   hiddenForProvider,
   isHiddenConversation,
   linkedForProvider,
+  providerStatus,
+  visibleProviderStatuses,
 } from "../src/conversation-display.js";
-import type { ConversationProvider, MatchDecision } from "@threadrelink/core";
+import type {
+  ConversationProvider,
+  MatchDecision,
+  ProviderSyncStatus,
+} from "@threadrelink/core";
 import type { WorkspaceResult } from "../src/view-model.js";
 
 function decision(
@@ -38,7 +44,29 @@ function decision(
   };
 }
 
-function workspace(linked: MatchDecision[]): WorkspaceResult {
+function workspace(
+  linked: MatchDecision[],
+  providers: ProviderSyncStatus[] = [
+    {
+      provider: "codex",
+      availability: "ready",
+      canLaunch: true,
+      message: null,
+    },
+    {
+      provider: "cursor",
+      availability: "unavailable",
+      canLaunch: false,
+      message: null,
+    },
+    {
+      provider: "opencode",
+      availability: "history-only",
+      canLaunch: false,
+      message: "CLI unavailable; local history remains available.",
+    },
+  ],
+): WorkspaceResult {
   return {
     name: "ChatAnchor",
     path: "/repo/ChatAnchor",
@@ -53,6 +81,7 @@ function workspace(linked: MatchDecision[]): WorkspaceResult {
         createdAt: "2026-01-01T00:00:00.000Z",
         updatedAt: "2026-01-01T00:00:00.000Z",
       },
+      providers,
       linked,
       suggested: [],
       ignored: [],
@@ -81,5 +110,18 @@ describe("conversation display helpers", () => {
     expect(hiddenForProvider(result, "opencode").map((item) => item.thread.id))
       .toEqual(["hidden"]);
     expect(hiddenConversationCount(result)).toBe(2);
+  });
+
+  it("only exposes detected providers and preserves launch capability", () => {
+    const result = workspace([]);
+
+    expect(visibleProviderStatuses(result).map((status) => status.provider))
+      .toEqual(["codex", "opencode"]);
+    expect(providerStatus(result, "opencode")).toMatchObject({
+      availability: "history-only",
+      canLaunch: false,
+    });
+    expect(providerStatus(result, "cursor")?.availability)
+      .toBe("unavailable");
   });
 });
