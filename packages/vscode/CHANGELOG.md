@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.14
+
+- Remove the introductory README paragraph that duplicated the Codex issue motivation and ChatAnchor approach.
+
 ## 1.0.13
 
 - Move the Codex issue 26836 motivation, ChatAnchor approach, and OpenAI feedback link to the README introduction.

@@ -8,8 +8,6 @@
 [![Release](https://img.shields.io/github/v/release/ascendho/ChatAnchor?style=flat-square&label=Release)](https://github.com/ascendho/ChatAnchor/releases/latest)
 [![License](https://img.shields.io/github/license/ascendho/ChatAnchor?style=flat-square&label=License)](LICENSE)
 
-ChatAnchor is a local VS Code extension: after a project folder is renamed or moved, it reconnects your original **Codex**, **Cursor Agent CLI**, and **OpenCode** conversations to that project and resumes the original thread from the new location. The project gets a path-independent local UUID, so old conversations do not "disappear" just because of a rename.
-
 This extension grew out of the problem discussed in [official Codex issue 26836](https://github.com/openai/codex/issues/26836): existing threads may no longer be automatically reattached after a project directory is renamed or moved. ChatAnchor gives each project a path-independent local identity and uses signals such as Git remotes, commits, and previous paths to recognize the project at its new location and reconnect its threads. We also documented this approach and shared it with OpenAI in [this comment](https://github.com/openai/codex/issues/26836#issuecomment-5558363522).
 
 > Name note: this extension was formerly **ThreadRelink** and is now **ChatAnchor**. Marketplace extension IDs cannot change after publishing, so the Marketplace URL and extension ID remain `ascendho.threadrelink`, and command/setting prefixes remain `threadrelink.*`.

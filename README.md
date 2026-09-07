@@ -8,8 +8,6 @@
 [![Release](https://img.shields.io/github/v/release/ascendho/ChatAnchor?style=flat-square&label=Release)](https://github.com/ascendho/ChatAnchor/releases/latest)
 [![License](https://img.shields.io/github/license/ascendho/ChatAnchor?style=flat-square&label=License)](LICENSE)
 
-ChatAnchor 是一个本地 VS Code 扩展：项目文件夹改名或移动后，它仍然能把原来的 **Codex**、**Cursor Agent CLI** 和 **OpenCode** 会话重新连接到这个项目，并从新目录继续原线程。项目获得一个不随路径变化的本地 UUID，旧会话不会因为一次重命名就「消失」。
-
 本插件从 [Codex 官方 Issue 26836](https://github.com/openai/codex/issues/26836) 所讨论的问题出发：项目目录改名或移动后，原会话可能无法自动重新关联。ChatAnchor 为项目建立不随路径变化的本地身份，并结合 Git remote、commit 和历史路径等线索，在目录变化后识别同一项目并重新连接原会话。我们也整理了这套方案，并以 [comment](https://github.com/openai/codex/issues/26836#issuecomment-5558363522) 的形式提交给 OpenAI 官方。
 
 > 名称说明：本扩展原名 **ThreadRelink**，现已更名为 **ChatAnchor**。由于 Marketplace 扩展 ID 发布后不可更改，Marketplace 网址与扩展 ID 仍为 `ascendho.threadrelink`，命令与设置前缀也仍为 `threadrelink.*`。
