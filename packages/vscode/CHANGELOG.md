@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.12
+
+- Add Codex issue 26836 background and the ChatAnchor solution feedback link to the README files.
+
 ## 1.0.11
 
 - Detect Codex, Cursor, and OpenCode independently so a missing provider no

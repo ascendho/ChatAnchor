@@ -80,6 +80,8 @@ ChatAnchor currently runs fully locally and uploads nothing. Cross-device conver
 
 Feedback is welcome. File reproducible bugs or feature requests in [GitHub Issues](https://github.com/ascendho/ChatAnchor/issues) — please search existing issues first. For security issues, use [GitHub private vulnerability reporting](https://github.com/ascendho/ChatAnchor/security/advisories/new) instead of a public issue.
 
+After a Codex project directory is renamed or moved, existing threads may no longer be automatically reattached. This problem was the motivation for ChatAnchor, and we have also shared ChatAnchor's solution with OpenAI in [Codex issue 26836](https://github.com/openai/codex/issues/26836), including [our comment](https://github.com/openai/codex/issues/26836#issuecomment-5558363522).
+
 ## Feedback and contributing
 
 Issues and pull requests are welcome:

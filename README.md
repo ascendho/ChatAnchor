@@ -80,6 +80,8 @@ ChatAnchor 完全在本机运行。默认只读取会话元数据（标题、时
 
 我们欢迎反馈。请在 [GitHub Issues](https://github.com/ascendho/ChatAnchor/issues) 提交可复现的 Bug 或功能建议，提交前请先搜索是否已有相同 Issue。涉及安全问题的，请使用 [GitHub 私密漏洞报告](https://github.com/ascendho/ChatAnchor/security/advisories/new)，不要创建公开 Issue。
 
+Codex 项目目录改名或移动后，会话可能无法自动重新关联。这个问题正是 ChatAnchor 诞生的动机；我们也已将 ChatAnchor 的解决方案反馈给 OpenAI 官方，详见 [Codex 官方 Issue 26836](https://github.com/openai/codex/issues/26836) 及 [ChatAnchor 的评论](https://github.com/openai/codex/issues/26836#issuecomment-5558363522)。
+
 ## 反馈与贡献
 
 欢迎提交 Issue 和 Pull Request：
