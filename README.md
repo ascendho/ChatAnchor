@@ -10,6 +10,8 @@
 
 ChatAnchor 是一个本地 VS Code 扩展：项目文件夹改名或移动后，它仍然能把原来的 **Codex**、**Cursor Agent CLI** 和 **OpenCode** 会话重新连接到这个项目，并从新目录继续原线程。项目获得一个不随路径变化的本地 UUID，旧会话不会因为一次重命名就「消失」。
 
+本插件从 [Codex 官方 Issue 26836](https://github.com/openai/codex/issues/26836) 所讨论的问题出发：项目目录改名或移动后，原会话可能无法自动重新关联。ChatAnchor 为项目建立不随路径变化的本地身份，并结合 Git remote、commit 和历史路径等线索，在目录变化后识别同一项目并重新连接原会话。我们也整理了这套方案，并以 [comment](https://github.com/openai/codex/issues/26836#issuecomment-5558363522) 的形式提交给 OpenAI 官方。
+
 > 名称说明：本扩展原名 **ThreadRelink**，现已更名为 **ChatAnchor**。由于 Marketplace 扩展 ID 发布后不可更改，Marketplace 网址与扩展 ID 仍为 `ascendho.threadrelink`，命令与设置前缀也仍为 `threadrelink.*`。
 
 ## 功能特性
@@ -79,8 +81,6 @@ ChatAnchor 完全在本机运行。默认只读取会话元数据（标题、时
 ## 报告问题
 
 我们欢迎反馈。请在 [GitHub Issues](https://github.com/ascendho/ChatAnchor/issues) 提交可复现的 Bug 或功能建议，提交前请先搜索是否已有相同 Issue。涉及安全问题的，请使用 [GitHub 私密漏洞报告](https://github.com/ascendho/ChatAnchor/security/advisories/new)，不要创建公开 Issue。
-
-Codex 项目目录改名或移动后，会话可能无法自动重新关联。这个问题正是 ChatAnchor 诞生的动机；我们也已将 ChatAnchor 的解决方案反馈给 OpenAI 官方，详见 [Codex 官方 Issue 26836](https://github.com/openai/codex/issues/26836) 及 [ChatAnchor 的评论](https://github.com/openai/codex/issues/26836#issuecomment-5558363522)。
 
 ## 反馈与贡献
 

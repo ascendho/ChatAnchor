@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.13
+
+- Move the Codex issue 26836 motivation, ChatAnchor approach, and OpenAI feedback link to the README introduction.
+
 ## 1.0.12
 
 - Add Codex issue 26836 background and the ChatAnchor solution feedback link to the README files.

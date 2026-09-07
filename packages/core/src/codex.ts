@@ -171,7 +171,7 @@ export class CodexAppServerClient implements HistoryAdapter {
       clientInfo: {
         name: "threadrelink",
         title: "ThreadRelink",
-        version: "1.0.12",
+        version: "1.0.13",
       },
     });
     this.send({
