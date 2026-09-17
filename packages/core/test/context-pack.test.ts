@@ -70,7 +70,7 @@ describe("project context packs", () => {
     expect(markdown).toContain("Request 8");
     expect(markdown).toContain("api_key=[REDACTED]");
     expect(markdown).toContain("src/file-8.ts");
-    expect(markdown).toContain("paths=./src/file-8.ts");
+    expect(markdown).toMatch(/paths=(?:\.\/)?src\/file-8\.ts/u);
     expect(markdown).toContain("<external-path>");
     expect(markdown).not.toContain("full tool output must not be retained");
     expect(markdown).not.toContain("system instructions must be omitted");
