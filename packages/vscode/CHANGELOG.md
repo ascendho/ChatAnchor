@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.0
+
+- Add explicit, local project context packs built from up to 10 linked Codex,
+  Cursor, or OpenCode conversations.
+- Add deterministic redaction, bounded extraction, project-relative path
+  normalization, atomic replacement, and local BM25/Chinese-bigram search.
+- Add commands to create, copy, search, and delete context packs, plus a
+  separate first-use consent prompt and automatic deletion with Forget Project.
+- Add the standalone `@ascendho/chatanchor-cli` package for scripted context
+  pack build, list, path, search, and delete workflows.
+
 ## 1.0.14
 
 - Remove the introductory README paragraph that duplicated the Codex issue motivation and ChatAnchor approach.

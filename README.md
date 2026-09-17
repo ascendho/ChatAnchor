@@ -18,6 +18,7 @@
 - 项目改名或移动后自动重连：基于 Git remote + commit、路径别名等保守证据，绝不只凭目录名关联
 - 在 ChatAnchor 视图里继续旧会话，或从标题栏 / provider 分组直接开启新会话
 - 跨 agent 迁移上下文：复制 Codex / Cursor `@path`、导出 OpenCode JSON，或生成精简 Markdown transcript
+- 从最多 10 条已链接会话生成本地项目 Context Pack，并用 `@path` 或确定性本地搜索在不同 agent 间复用
 - 整理会话列表：自定义描述、隐藏 / 恢复会话、Find Old Conversations 找回历史会话
 - 完全本地运行、无遥测、不上传任何数据
 
@@ -26,7 +27,7 @@
 ## 快速开始
 
 > [!NOTE]
-> ChatAnchor 只读取本地元数据，不会上传任何数据，也不会读取会话正文。首次使用前，你需要显式授权并逐个设置项目。
+> ChatAnchor 的默认扫描只读取本地元数据，不会上传任何数据，也不会读取会话正文。只有你显式执行导出、精简 transcript 或 Context Pack 操作时才会读取所选内容；首次使用前，你需要显式授权并逐个设置项目。
 
 1. **安装扩展**
    - 从 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink) 安装，或在命令行执行：
@@ -52,6 +53,21 @@
 
 8. **跨 agent 迁移上下文**：右键历史会话选择 **Copy Compact @ Transcript**。首次使用会要求确认读取会话正文；随后 ChatAnchor 会生成本地精简 Markdown 并复制 `@path`，可直接粘贴给另一个 agent。
 
+9. **建立项目 Context Pack**：运行 **Create or Update Project Context Pack**，选择最多 10 条已链接会话。ChatAnchor 会提取每条会话最早 2 个用户请求和最近 5 组完整问答，保留工具名称、命令、状态与项目相对路径，并复制生成文件的 `@path`。之后可运行 **Search Project Context** 或 **Copy Project Context @ Path**。
+
+## 项目 Context Pack 与 CLI
+
+Context Pack 是显式生成、确定性且完全本地的项目记忆。文件位于 `~/.threadrelink/context-packs/<project-id>/context.md`，清单使用独立的 `context_pack.v1` schema。生成时会移除系统/开发者消息和完整工具输出，对常见密钥、令牌、Cookie、URL 密码与凭据赋值脱敏；项目内绝对路径转为相对路径，项目外路径替换为 `<external-path>`。如果任一来源无法读取或解析，现有 Context Pack 不会被替换。
+
+同一功能也可通过独立 npm CLI 使用。CLI 不会初始化项目，只处理已经由扩展设置并链接的项目：
+
+```bash
+npx @ascendho/chatanchor-cli context list --cwd .
+npx @ascendho/chatanchor-cli context build --cwd . --thread codex:<thread-id> --yes
+npx @ascendho/chatanchor-cli context search --cwd . --query "发布流程"
+npx @ascendho/chatanchor-cli context path --cwd .
+```
+
 ## 链接管理示例
 
 日常整理列表时用 `Hide Conversation`。只有当会话和项目的归属关系错了，才需要打开链接管理。
@@ -70,7 +86,7 @@
 
 ChatAnchor 完全在本机运行。默认只读取会话元数据（标题、时间、工作目录、Git 信息等），不读取消息正文，不上传任何数据，也不提供遥测；只有在显式设置项目并授权后才会扫描。
 
-自定义描述、隐藏状态和项目链接只写入本机 ChatAnchor registry，不会修改 Codex、Cursor 或 OpenCode 的原始会话数据。只有当你显式执行 **Export OpenCode JSON and Copy @ Path** 或 **Copy Compact @ Transcript** 时，ChatAnchor 才会读取或写出本地会话内容文件；这些文件仍保留在本机。
+自定义描述、隐藏状态和项目链接只写入本机 ChatAnchor registry，不会修改 Codex、Cursor 或 OpenCode 的原始会话数据。只有当你显式执行导出、精简 transcript 或 Context Pack 操作时，ChatAnchor 才会读取会话正文；生成内容仍留在本机。Context Pack 首次使用需要单独授权，文件权限为目录 `0700`、文件 `0600`（在支持 POSIX 权限的平台）。**Forget Project** 会一并删除生成的 Context Pack，但不会删除 agent 的原始会话。
 
 ## 未来规划
 

@@ -1,4 +1,5 @@
 import { createWriteStream } from "node:fs";
+import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -6,7 +7,7 @@ import { promisify } from "node:util";
 import { access, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import type * as NodeSqlite from "node:sqlite";
 import { finished } from "node:stream/promises";
 import { ThreadRelinkError, errorMessage } from "./errors.js";
 import { normalizeAbsolutePath } from "./path.js";
@@ -15,6 +16,9 @@ import type { ThreadMetadata } from "./types.js";
 const execFileAsync = promisify(execFile);
 
 const OPENCODE_DIRNAME = "opencode";
+const { DatabaseSync } = createRequire(
+  join(process.cwd(), "chatanchor-runtime.cjs"),
+)("node:sqlite") as typeof NodeSqlite;
 
 /** Resolve the OpenCode data directory (XDG-style, like OpenCode itself). */
 export function resolveOpenCodeHome(explicitHome?: string): string {
@@ -451,7 +455,7 @@ export async function listOpenCodeThreads(options: {
     return [];
   }
 
-  let database: DatabaseSync | undefined;
+  let database: NodeSqlite.DatabaseSync | undefined;
   try {
     database = new DatabaseSync(dbPath, { readOnly: true });
     const rows = database
@@ -503,7 +507,7 @@ export async function resolveOpenCodeSessionDirectory(
   if (!(await pathExists(dbPath))) {
     return null;
   }
-  let database: DatabaseSync | undefined;
+  let database: NodeSqlite.DatabaseSync | undefined;
   try {
     database = new DatabaseSync(dbPath, { readOnly: true });
     const row = database

@@ -11,6 +11,7 @@ const manifests = [
   ["root", "../package.json"],
   ["core", "../packages/core/package.json"],
   ["VS Code", "../packages/vscode/package.json"],
+  ["CLI", "../packages/cli/package.json"],
 ];
 
 for (const [name, path] of manifests) {

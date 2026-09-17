@@ -2,7 +2,7 @@
   "name": "threadrelink",
   "displayName": "ChatAnchor",
   "description": "A VS Code extension that keeps AI coding agent conversations connected to their projects after folders are renamed or moved.",
-  "version": "1.0.14",
+  "version": "1.1.0",
   "icon": "resources/threadrelink.png",
   "publisher": "ascendho",
   "repository": {
@@ -173,6 +173,26 @@
         "icon": "$(file-text)"
       },
       {
+        "command": "threadrelink.createProjectContextPack",
+        "title": "ChatAnchor: Create or Update Project Context Pack",
+        "icon": "$(archive)"
+      },
+      {
+        "command": "threadrelink.copyProjectContextAtPath",
+        "title": "ChatAnchor: Copy Project Context @ Path",
+        "icon": "$(mention)"
+      },
+      {
+        "command": "threadrelink.searchProjectContext",
+        "title": "ChatAnchor: Search Project Context",
+        "icon": "$(search)"
+      },
+      {
+        "command": "threadrelink.deleteProjectContextPack",
+        "title": "ChatAnchor: Delete Project Context Pack",
+        "icon": "$(trash)"
+      },
+      {
         "command": "threadrelink.revealLocation",
         "title": "ChatAnchor: Reveal Conversation File",
         "icon": "$(folder-opened)"
@@ -277,6 +297,18 @@
             "completionEvents": [
               "onCommand:threadrelink.resume"
             ]
+          },
+          {
+            "id": "threadrelink.gettingStarted.contextPack",
+            "title": "Reuse selected context across agents",
+            "description": "Select up to 10 linked conversations to create a local, redacted project context pack, then copy its `@path` or search it from any agent. Nothing is uploaded.\n[Create Project Context Pack](command:threadrelink.createProjectContextPack)",
+            "media": {
+              "image": "media/guide/05-resumed-terminal.png",
+              "altText": "ChatAnchor conversations available for local context reuse"
+            },
+            "completionEvents": [
+              "onCommand:threadrelink.createProjectContextPack"
+            ]
           }
         ]
       }
@@ -332,6 +364,26 @@
           "command": "threadrelink.restoreHiddenConversations",
           "when": "view == threadrelink.conversations && threadrelink.hasHiddenConversations",
           "group": "manage@0"
+        },
+        {
+          "command": "threadrelink.createProjectContextPack",
+          "when": "view == threadrelink.conversations && threadrelink.hasReadyProject",
+          "group": "context@1"
+        },
+        {
+          "command": "threadrelink.copyProjectContextAtPath",
+          "when": "view == threadrelink.conversations && threadrelink.hasReadyProject",
+          "group": "context@2"
+        },
+        {
+          "command": "threadrelink.searchProjectContext",
+          "when": "view == threadrelink.conversations && threadrelink.hasReadyProject",
+          "group": "context@3"
+        },
+        {
+          "command": "threadrelink.deleteProjectContextPack",
+          "when": "view == threadrelink.conversations && threadrelink.hasReadyProject",
+          "group": "context@4"
         },
         {
           "command": "threadrelink.relink",

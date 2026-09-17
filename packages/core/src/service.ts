@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { stat } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import {
   CodexAppServerClient,
@@ -13,9 +13,14 @@ import {
 } from "./cursor.js";
 import { errorMessage, ThreadRelinkError } from "./errors.js";
 import {
+  exportOpenCodeSessionToTempFile,
   listOpenCodeThreads,
   resolveOpenCodePath,
 } from "./opencode.js";
+import {
+  deleteProjectContextPack,
+  type ContextPackSource,
+} from "./context-pack.js";
 import {
   ensureGitProjectId,
   excludeFolderIdentity,
@@ -77,6 +82,12 @@ export interface ThreadRelinkServiceOptions {
   openCodeHome?: string;
   historyAdapterFactory?: HistoryAdapterFactory;
   now?: () => Date;
+}
+
+export interface ProjectContextSources {
+  project: ProjectRecord;
+  projectRoot: string;
+  sources: ThreadMetadata[];
 }
 
 function threadKey(
@@ -1432,6 +1443,72 @@ export class ThreadRelinkService {
     return (await this.registry.read()).projects;
   }
 
+  public async listProjectContextSources(
+    inputPath = process.cwd(),
+  ): Promise<ProjectContextSources> {
+    const { project, context } = await this.readyProject(inputPath);
+    const registry = await this.registry.read();
+    const linkedKeys = new Set(
+      registry.threadLinks
+        .filter((link) => link.projectId === project.id)
+        .map((link) => threadKey(link.provider, link.threadId)),
+    );
+    return {
+      project,
+      projectRoot: context.root,
+      sources: registry.threads.filter((thread) =>
+        linkedKeys.has(threadKey(thread.provider, thread.id))
+      ).sort((left, right) => right.updatedAt - left.updatedAt),
+    };
+  }
+
+  public async readProjectContextSource(
+    inputPath: string,
+    provider: ConversationProvider,
+    threadId: string,
+  ): Promise<ContextPackSource> {
+    const info = await this.listProjectContextSources(inputPath);
+    const thread = info.sources.find((candidate) =>
+      candidate.provider === provider && candidate.id === threadId
+    );
+    if (!thread) {
+      throw new ThreadRelinkError(
+        "CONTEXT_PACK_SOURCE_NOT_LINKED",
+        `Conversation ${provider}/${threadId} is not linked to ${info.project.name}.`,
+      );
+    }
+    let filePath: string;
+    if (provider === "opencode") {
+      filePath = (await exportOpenCodeSessionToTempFile(threadId, {
+        openCodeHome: this.openCodeHome,
+        openCodePath: this.openCodePath,
+      })).filePath;
+    } else {
+      filePath = await this.resolveConversationFilePath(
+        provider,
+        threadId,
+        thread.cwd,
+      );
+    }
+    let raw: string;
+    try {
+      raw = await readFile(filePath, "utf8");
+    } catch (error) {
+      throw new ThreadRelinkError(
+        "CONTEXT_PACK_SOURCE_UNREADABLE",
+        `Could not read the local transcript for ${provider}/${threadId}.`,
+        { cause: error },
+      );
+    }
+    return {
+      provider,
+      threadId,
+      title: conversationTitle(thread),
+      updatedAt: thread.updatedAt,
+      raw,
+    };
+  }
+
   public async previewForgetProject(
     projectId: string,
     workspacePaths: string[] = [],
@@ -1533,10 +1610,15 @@ export class ThreadRelinkService {
         (item) => item.projectId !== projectId,
       );
     });
+    const removedContextPack = await deleteProjectContextPack(
+      projectId,
+      this.registry.home,
+    );
     return {
       projectId,
       removedLinks: preview.linkedThreads,
       removedIdentityPaths: [...new Set(removedIdentityPaths)],
+      removedContextPack,
     };
   }
 }

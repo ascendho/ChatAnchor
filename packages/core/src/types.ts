@@ -204,6 +204,7 @@ export interface ForgetProjectResult {
   projectId: string;
   removedLinks: number;
   removedIdentityPaths: string[];
+  removedContextPack: boolean;
 }
 
 export interface HistoryAdapter {

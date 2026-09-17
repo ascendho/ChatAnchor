@@ -1,0 +1,33 @@
+{
+  "name": "@ascendho/chatanchor-cli",
+  "version": "1.1.0",
+  "description": "Local project context packs for AI coding agents.",
+  "type": "module",
+  "bin": {
+    "chatanchor": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "GPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ascendho/ChatAnchor.git",
+    "directory": "packages/cli"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@threadrelink/core": "workspace:*",
+    "tsup": "^8.5.0"
+  }
+}

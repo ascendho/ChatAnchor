@@ -18,6 +18,7 @@ This extension grew out of the problem discussed in [official Codex issue 26836]
 - Automatically reconnects after a project is renamed or moved, based on conservative evidence such as Git remote + commit and path aliases — never links by directory name alone
 - Resume existing conversations or start new Codex / Cursor / OpenCode sessions directly from the ChatAnchor view
 - Carry context across agents: copy Codex / Cursor `@path`, export OpenCode JSON, or create compact Markdown transcripts
+- Build a local project context pack from up to 10 linked conversations, then reuse it across agents by `@path` or deterministic local search
 - Organize conversations with custom descriptions, hide / unhide controls, and Find Old Conversations
 - Runs entirely locally — no telemetry, nothing uploaded
 
@@ -26,7 +27,7 @@ This extension grew out of the problem discussed in [official Codex issue 26836]
 ## Getting started
 
 > [!NOTE]
-> ChatAnchor only reads local metadata. It never uploads data and never reads message bodies. Before first use, you must explicitly grant consent and set up each project.
+> ChatAnchor's default scan only reads local metadata. It never uploads data and reads selected message bodies only for explicit export, compact transcript, or context-pack actions. Before first use, you must explicitly grant consent and set up each project.
 
 1. **Install the extension**
    - Install from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink), or run:
@@ -52,6 +53,21 @@ This extension grew out of the problem discussed in [official Codex issue 26836]
 
 8. **Carry context across agents**: right-click a historical conversation and choose **Copy Compact @ Transcript**. The first use asks for confirmation before reading the conversation body; then ChatAnchor writes a compact local Markdown file and copies its `@path` for pasting into another agent.
 
+9. **Build a project context pack**: run **Create or Update Project Context Pack** and select up to 10 linked conversations. ChatAnchor keeps the first two user requests and latest five complete user/assistant pairs from each source, plus tool names, commands, status, and project-relative paths. It copies the generated `@path`; use **Search Project Context** or **Copy Project Context @ Path** later.
+
+## Project context packs and CLI
+
+A context pack is explicit, deterministic, fully local project memory. It lives at `~/.threadrelink/context-packs/<project-id>/context.md`, with an independent `context_pack.v1` manifest. Generation removes system/developer messages and full tool output; redacts common private keys, tokens, cookies, URL passwords, and credential assignments; converts project paths to relative paths; and replaces outside paths with `<external-path>`. If any selected source cannot be read or parsed, the existing pack is left unchanged.
+
+The same workflow is available through a standalone npm CLI. The CLI never initializes projects; it only works with projects and conversations already set up and linked by the extension:
+
+```bash
+npx @ascendho/chatanchor-cli context list --cwd .
+npx @ascendho/chatanchor-cli context build --cwd . --thread codex:<thread-id> --yes
+npx @ascendho/chatanchor-cli context search --cwd . --query "release workflow"
+npx @ascendho/chatanchor-cli context path --cwd .
+```
+
 ## Link Management Examples
 
 For everyday cleanup, use `Hide Conversation`. Open link management only when a conversation belongs to the wrong ChatAnchor project.
@@ -70,7 +86,7 @@ For everyday cleanup, use `Hide Conversation`. Open link management only when a 
 
 ChatAnchor runs entirely on your machine. By default it only reads conversation metadata (title, timestamps, working directory, Git info), never reads message bodies, uploads nothing, and has no telemetry; scanning only happens after explicit project setup and consent.
 
-Custom descriptions, hidden state, and project links are stored only in the local ChatAnchor registry. ChatAnchor does not modify the original Codex, Cursor, or OpenCode conversation data. Only explicit **Export OpenCode JSON and Copy @ Path** or **Copy Compact @ Transcript** actions read or write local conversation-content files, and those files stay on your machine.
+Custom descriptions, hidden state, and project links are stored only in the local ChatAnchor registry. ChatAnchor does not modify the original Codex, Cursor, or OpenCode conversation data. ChatAnchor reads message bodies only for explicit export, compact transcript, or context-pack actions, and generated files stay on your machine. Context packs require separate first-use consent and use `0700` directories and `0600` files on platforms with POSIX permissions. **Forget Project** also deletes its generated context pack without deleting source conversations.
 
 ## Roadmap
 

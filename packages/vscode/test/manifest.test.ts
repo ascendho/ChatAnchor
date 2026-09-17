@@ -96,7 +96,7 @@ describe("VS Code extension manifest", () => {
     );
 
     expect(walkthrough).toBeDefined();
-    expect(walkthrough?.steps).toHaveLength(5);
+    expect(walkthrough?.steps).toHaveLength(6);
     expect(commandIds).toContain("threadrelink.openGettingStarted");
     expect(commandIds).toContain("threadrelink.openView");
     expect(commandIds).toContain("threadrelink.findOldConversations");
@@ -114,6 +114,10 @@ describe("VS Code extension manifest", () => {
     expect(commandIds).toContain("threadrelink.copyAtPath");
     expect(commandIds).toContain("threadrelink.exportOpenCodeAtPath");
     expect(commandIds).toContain("threadrelink.copyCompactAtPath");
+    expect(commandIds).toContain("threadrelink.createProjectContextPack");
+    expect(commandIds).toContain("threadrelink.copyProjectContextAtPath");
+    expect(commandIds).toContain("threadrelink.searchProjectContext");
+    expect(commandIds).toContain("threadrelink.deleteProjectContextPack");
     expect(commandIds).toContain("threadrelink.startNewSession");
     expect(commandIds).toContain("threadrelink.revealLocation");
     expect(commandIds).toContain("threadrelink.collapseTree");

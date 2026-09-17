@@ -1,6 +1,8 @@
 import * as vscode from "vscode";
 import {
+  buildProjectContextPack,
   buildCodexNewSessionArgs,
+  deleteProjectContextPack,
   ThreadRelinkService,
   buildCodexResumeArgs,
   buildCursorNewSessionArgs,
@@ -9,8 +11,11 @@ import {
   buildOpenCodeResumeArgs,
   errorMessage,
   exportOpenCodeSessionToTempFile,
+  readProjectContextPackManifest,
+  resolveProjectContextPackPath,
   resolveExecutablePath,
   runDoctor,
+  searchProjectContextPack,
   writeCompactTranscriptFromFile,
   type ConversationProvider,
   type MatchDecision,
@@ -45,6 +50,7 @@ import { hiddenConversationCount } from "./conversation-display.js";
 const CONSENT_KEY = "threadrelink.metadataConsent.v1";
 const COMPACT_TRANSCRIPT_CONSENT_KEY =
   "threadrelink.compactTranscriptConsent.v1";
+const CONTEXT_PACK_CONSENT_KEY = "threadrelink.contextPackConsent.v1";
 const REPAIR_WARNING_PREFIX = "threadrelink.repairWarning.v1";
 
 interface Settings {
@@ -278,6 +284,22 @@ export async function activate(
       return false;
     }
     await context.globalState.update(COMPACT_TRANSCRIPT_CONSENT_KEY, true);
+    return true;
+  };
+
+  const ensureContextPackConsent = async (): Promise<boolean> => {
+    if (context.globalState.get<boolean>(CONTEXT_PACK_CONSENT_KEY, false)) {
+      return true;
+    }
+    const action = await vscode.window.showWarningMessage(
+      "ChatAnchor will read the conversations you select and persist a redacted project context pack under ~/.threadrelink. It keeps user and assistant text plus tool names, commands, status, and project-relative paths. Nothing is uploaded.",
+      { modal: true },
+      "Allow Project Context Packs",
+    );
+    if (action !== "Allow Project Context Packs") {
+      return false;
+    }
+    await context.globalState.update(CONTEXT_PACK_CONSENT_KEY, true);
     return true;
   };
 
@@ -760,7 +782,7 @@ export async function activate(
       );
       const root = preview.project.aliases.at(-1)?.path ?? preview.project.name;
       const choice = await vscode.window.showWarningMessage(
-        `Forget ChatAnchor project “${preview.project.name}” at ${root}? ${preview.linkedThreads} ChatAnchor link(s) and matching local identities will be removed. Codex conversations and transcripts will not be deleted.`,
+        `Forget ChatAnchor project “${preview.project.name}” at ${root}? ${preview.linkedThreads} ChatAnchor link(s), matching local identities, and any generated project context pack will be removed. Agent conversations and source transcripts will not be deleted.`,
         { modal: true },
         "Forget project",
       );
@@ -769,7 +791,7 @@ export async function activate(
       }
       const result = await service.forgetProject(projectId, workspacePaths);
       void vscode.window.showInformationMessage(
-        `Forgot ${preview.project.name}: removed ${result.removedLinks} ChatAnchor link(s). No Codex conversations were deleted.`,
+        `Forgot ${preview.project.name}: removed ${result.removedLinks} ChatAnchor link(s)${result.removedContextPack ? " and its generated context pack" : ""}. No agent conversations were deleted.`,
       );
       await refresh(false);
     } catch (error) {
@@ -1265,6 +1287,178 @@ export async function activate(
     }
   };
 
+  const createProjectContextPack = async (
+    requestedPath?: string,
+  ): Promise<void> => {
+    const workspace = await chooseReadyWorkspace(
+      "Choose a project for the context pack",
+      requestedPath,
+    );
+    if (!workspace || !(await ensureContextPackConsent())) {
+      return;
+    }
+    const candidates = provider.allLinked().filter((node) =>
+      node.kind === "thread" && node.workspace.path === workspace.path
+    );
+    if (candidates.length === 0) {
+      void vscode.window.showInformationMessage(
+        "Link at least one conversation to this project first.",
+      );
+      return;
+    }
+    const selected = await vscode.window.showQuickPick(
+      candidates.flatMap((node) => node.kind === "thread" ? [{
+        label: conversationLabel(node.decision),
+        description: AGENT_PROVIDER_LABEL[node.decision.thread.provider],
+        detail: `${relativeDate(node.decision.thread.updatedAt)} · ${node.decision.thread.id}`,
+        node,
+      }] : []),
+      {
+        canPickMany: true,
+        placeHolder: "Select up to 10 linked conversations",
+        matchOnDescription: true,
+        matchOnDetail: true,
+        ignoreFocusOut: true,
+      },
+    );
+    if (!selected || selected.length === 0) {
+      return;
+    }
+    if (selected.length > 10) {
+      void vscode.window.showErrorMessage(
+        "ChatAnchor context packs support up to 10 conversations.",
+      );
+      return;
+    }
+    try {
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: "ChatAnchor: Building project context pack",
+          cancellable: false,
+        },
+        async () => {
+          const service = makeService();
+          const info = await service.listProjectContextSources(workspace.path);
+          const sources = [];
+          for (const item of selected) {
+            const thread = item.node.decision.thread;
+            sources.push(await service.readProjectContextSource(
+              workspace.path,
+              thread.provider,
+              thread.id,
+            ));
+          }
+          const result = await buildProjectContextPack({
+            projectId: info.project.id,
+            projectName: info.project.name,
+            projectRoot: info.projectRoot,
+            sources,
+            registryHome: service.registry.home,
+          });
+          await vscode.env.clipboard.writeText(result.atPath);
+          const action = await vscode.window.showInformationMessage(
+            `Built a context pack from ${result.manifest.sources.length} conversation(s) and copied ${result.atPath}.`,
+            "Reveal in OS",
+          );
+          if (action === "Reveal in OS") {
+            await vscode.commands.executeCommand(
+              "revealFileInOS",
+              vscode.Uri.file(result.filePath),
+            );
+          }
+        },
+      );
+    } catch (error) {
+      void vscode.window.showErrorMessage(`ChatAnchor: ${errorMessage(error)}`);
+    }
+  };
+
+  const copyProjectContextAtPath = async (
+    requestedPath?: string,
+  ): Promise<void> => {
+    const workspace = await chooseReadyWorkspace(
+      "Choose a project context pack",
+      requestedPath,
+    );
+    if (!workspace) {
+      return;
+    }
+    try {
+      const service = makeService();
+      const info = await service.listProjectContextSources(workspace.path);
+      await readProjectContextPackManifest(info.project.id, service.registry.home);
+      const filePath = `${resolveProjectContextPackPath(info.project.id, service.registry.home)}/context.md`;
+      await vscode.env.clipboard.writeText(`@${filePath}`);
+      void vscode.window.showInformationMessage(`Copied @${filePath}.`);
+    } catch (error) {
+      void vscode.window.showErrorMessage(`ChatAnchor: ${errorMessage(error)}`);
+    }
+  };
+
+  const searchProjectContext = async (requestedPath?: string): Promise<void> => {
+    const workspace = await chooseReadyWorkspace(
+      "Choose a project context pack to search",
+      requestedPath,
+    );
+    if (!workspace) {
+      return;
+    }
+    const query = await vscode.window.showInputBox({
+      prompt: "Search the local project context pack",
+      placeHolder: "Feature, decision, error, or file name",
+      ignoreFocusOut: true,
+      validateInput: (value) => value.trim() ? undefined : "Enter a search query.",
+    });
+    if (!query) {
+      return;
+    }
+    try {
+      const service = makeService();
+      const info = await service.listProjectContextSources(workspace.path);
+      const result = await searchProjectContextPack({
+        projectId: info.project.id,
+        query,
+        registryHome: service.registry.home,
+      });
+      await vscode.env.clipboard.writeText(result.atPath);
+      void vscode.window.showInformationMessage(
+        `Copied ${result.atPath} with ${result.matchCount} context match(es).`,
+      );
+    } catch (error) {
+      void vscode.window.showErrorMessage(`ChatAnchor: ${errorMessage(error)}`);
+    }
+  };
+
+  const deleteProjectContext = async (requestedPath?: string): Promise<void> => {
+    const workspace = await chooseReadyWorkspace(
+      "Choose a project context pack to delete",
+      requestedPath,
+    );
+    if (!workspace) {
+      return;
+    }
+    try {
+      const service = makeService();
+      const info = await service.listProjectContextSources(workspace.path);
+      await readProjectContextPackManifest(info.project.id, service.registry.home);
+      const action = await vscode.window.showWarningMessage(
+        `Delete the generated context pack for “${info.project.name}”? Source conversations are not changed.`,
+        { modal: true },
+        "Delete Context Pack",
+      );
+      if (action !== "Delete Context Pack") {
+        return;
+      }
+      await deleteProjectContextPack(info.project.id, service.registry.home);
+      void vscode.window.showInformationMessage(
+        `Deleted the context pack for ${info.project.name}.`,
+      );
+    } catch (error) {
+      void vscode.window.showErrorMessage(`ChatAnchor: ${errorMessage(error)}`);
+    }
+  };
+
   const warnAboutLegacyParent = async (
     workspaces: WorkspaceResult[],
   ): Promise<void> => {
@@ -1416,6 +1610,22 @@ export async function activate(
     vscode.commands.registerCommand(
       "threadrelink.copyCompactAtPath",
       copyCompactAtPath,
+    ),
+    vscode.commands.registerCommand(
+      "threadrelink.createProjectContextPack",
+      createProjectContextPack,
+    ),
+    vscode.commands.registerCommand(
+      "threadrelink.copyProjectContextAtPath",
+      copyProjectContextAtPath,
+    ),
+    vscode.commands.registerCommand(
+      "threadrelink.searchProjectContext",
+      searchProjectContext,
+    ),
+    vscode.commands.registerCommand(
+      "threadrelink.deleteProjectContextPack",
+      deleteProjectContext,
     ),
     vscode.commands.registerCommand(
       "threadrelink.move",
@@ -1692,6 +1902,10 @@ export async function activate(
     "exportOpenCodeAtPath",
     "copyOpenCodeExportCommand",
     "copyCompactAtPath",
+    "createProjectContextPack",
+    "copyProjectContextAtPath",
+    "searchProjectContext",
+    "deleteProjectContextPack",
     "resume",
     "copyAtPath",
     "revealLocation",

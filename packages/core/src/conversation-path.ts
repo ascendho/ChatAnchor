@@ -1,4 +1,5 @@
-import { DatabaseSync } from "node:sqlite";
+import { createRequire } from "node:module";
+import type * as NodeSqlite from "node:sqlite";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { access, readdir, stat } from "node:fs/promises";
@@ -8,6 +9,9 @@ import { canonicalizeExistingPath, normalizeAbsolutePath } from "./path.js";
 import type { ConversationProvider } from "./types.js";
 
 const STATE_DB_PATTERN = /^state_(\d+)\.sqlite$/u;
+const { DatabaseSync } = createRequire(
+  join(process.cwd(), "chatanchor-runtime.cjs"),
+)("node:sqlite") as typeof NodeSqlite;
 
 export function resolveCodexHome(explicitHome?: string): string {
   const raw = explicitHome
@@ -55,7 +59,7 @@ function readRolloutPathFromStateDb(
   databasePath: string,
   threadId: string,
 ): string | null {
-  let database: DatabaseSync | undefined;
+  let database: NodeSqlite.DatabaseSync | undefined;
   try {
     database = new DatabaseSync(databasePath, { readOnly: true });
     const row = database

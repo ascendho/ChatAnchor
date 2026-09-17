@@ -27,6 +27,15 @@ importers:
         specifier: ^8.38.0
         version: 8.65.0(eslint@9.39.5)(typescript@5.9.3)
 
+  packages/cli:
+    devDependencies:
+      '@threadrelink/core':
+        specifier: workspace:*
+        version: link:../core
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(postcss@8.5.23)(typescript@5.9.3)
+
   packages/core:
     dependencies:
       zod:
