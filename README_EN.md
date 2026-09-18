@@ -57,7 +57,9 @@ This extension grew out of the problem discussed in [official Codex issue 26836]
 
 ## Cross-agent conversation handoffs
 
-Each handoff carries one conversation. `handoff.md` is the target agent's entry point: short conversations fit in full; long conversations continue from the last context-compaction boundary when available, otherwise keeping the initial goal and up to the latest 20 user turns. Complete content always remains in `full-transcript.md` and `original/`, and every omission in the entry points to those records. Content-addressed handoffs stay under `~/.threadrelink/handoffs/`; ChatAnchor does not call a model to summarize them or modify the source conversation.
+Each handoff carries one conversation. The target agent first reads `handoff.md`, inspects the current project state, project instructions, Git status, and unfinished work, then presents a plan and waits for approval. It must not edit files, install dependencies, or commit changes before approval. Short conversations fit in the entry; long conversations continue from the last context-compaction boundary when available, otherwise keeping the initial goal and up to the latest 20 user turns. The target reads `full-transcript.md` or `original/` only when the working set lacks details relevant to the current decision. Complete content remains in those layers, and ChatAnchor does not call a model to summarize or modify the source conversation.
+
+Handoffs are reused when the same project, source conversation metadata, and complete source bytes are unchanged: ChatAnchor uses the existing local directory instead of copying and parsing it again. If the conversation gains a message, the source content changes, or source metadata changes, ChatAnchor creates a new directory and keeps the old one. This reuses local files; it does not transfer the previous agent's process, terminal, or model state.
 
 **Copy Compact @ Transcript** remains available when you want a smaller file to pass manually without starting another agent.
 

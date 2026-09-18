@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.2
+
+- Require cross-agent handoffs to inspect the current project and present a plan
+  before making changes; read complete transcripts and original artifacts only
+  when the bounded working set lacks relevant details.
+- Clarify content-addressed handoff reuse and refresh the handoff documentation.
+
 ## 1.1.1
 
 - Add **Continue in Another Agent...** for one-click handoff from a linked

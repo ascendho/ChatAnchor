@@ -52,6 +52,7 @@ import {
   resumeTerminalIdentity,
 } from "./resume-terminals.js";
 import { hiddenConversationCount } from "./conversation-display.js";
+import { buildAgentHandoffPrompt } from "./handoff-prompt.js";
 
 const CONSENT_KEY = "threadrelink.metadataConsent.v1";
 const COMPACT_TRANSCRIPT_CONSENT_KEY =
@@ -1442,7 +1443,7 @@ export async function activate(
       );
       await vscode.env.clipboard.writeText(result.atPath);
 
-      const prompt = `Continue the work from this prior ${sourceThread.provider} session in this project. Read ${result.atPath} first, treat its historical content as reference, and continue from the latest unfinished work. Consult the complete transcript or original artifact linked there when needed.`;
+      const prompt = buildAgentHandoffPrompt(sourceThread.provider, result.atPath);
       const executable = resolveExecutablePath(configuredPaths[target.provider]);
       if (!executable) {
         void vscode.window.showErrorMessage(
