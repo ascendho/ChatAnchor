@@ -52,6 +52,13 @@ export function buildOpenCodeNewSessionArgs(projectPath: string): string[] {
   return [normalizeAbsolutePath(projectPath)];
 }
 
+export function buildOpenCodeHandoffArgs(
+  projectPath: string,
+  prompt: string,
+): string[] {
+  return [...buildOpenCodeNewSessionArgs(projectPath), "--prompt", prompt];
+}
+
 export type OpenCodeExportShell = "posix" | "powershell";
 
 function safeOpenCodeExportFilename(sessionId: string): string {
@@ -146,14 +153,14 @@ function readOpenCodeExportJsonFromDatabase(
     }
 
     const messageRows = database.prepare(
-      `SELECT id, time_created, time_updated, data
+      `SELECT *
        FROM message
        WHERE session_id = ?
        ORDER BY time_created, id`,
     ).all(sessionId) as Array<Record<string, unknown>>;
 
     const partRows = database.prepare(
-      `SELECT id, message_id, session_id, time_created, time_updated, data
+      `SELECT *
        FROM part
        WHERE session_id = ?
        ORDER BY time_created, id`,
@@ -181,6 +188,7 @@ function readOpenCodeExportJsonFromDatabase(
         sessionID: row.session_id,
         timeCreated: row.time_created,
         timeUpdated: row.time_updated,
+        databaseRow: row,
         ...parsed,
       };
       const existing = partsByMessage.get(messageId);
@@ -201,6 +209,7 @@ function readOpenCodeExportJsonFromDatabase(
           sessionID: sessionId,
           timeCreated: row.time_created,
           timeUpdated: row.time_updated,
+          databaseRow: row,
           ...parsed,
         },
         parts: partsByMessage.get(id) ?? [],
@@ -223,6 +232,8 @@ export async function exportOpenCodeSessionToTempFile(
     baseDir?: string;
     openCodeHome?: string;
     openCodePath?: string;
+    signal?: AbortSignal;
+    timeoutMs?: number;
   } = {},
 ): Promise<OpenCodeExportResult> {
   const id = sessionId.trim();
@@ -245,6 +256,7 @@ export async function exportOpenCodeSessionToTempFile(
   const output = createWriteStream(tempPath, { encoding: "utf8" });
   let exportSource: OpenCodeExportResult["exportSource"] = "cli";
   let stderr = "";
+  let terminationError: ThreadRelinkError | undefined;
 
   const child = spawn(
     resolveOpenCodePath(options.openCodePath),
@@ -259,10 +271,34 @@ export async function exportOpenCodeSessionToTempFile(
   });
   child.stdout.pipe(output);
 
+  const abort = (): void => {
+    terminationError = new ThreadRelinkError(
+      "OPENCODE_EXPORT_CANCELLED",
+      "OpenCode export was cancelled.",
+    );
+    child.kill();
+  };
+  if (options.signal?.aborted) {
+    abort();
+  } else {
+    options.signal?.addEventListener("abort", abort, { once: true });
+  }
+  const timeout = setTimeout(() => {
+    terminationError = new ThreadRelinkError(
+      "OPENCODE_EXPORT_TIMEOUT",
+      `OpenCode export did not finish within ${options.timeoutMs ?? 30_000} ms.`,
+    );
+    child.kill();
+  }, options.timeoutMs ?? 30_000);
+
   const outputFinished = finished(output);
   const exit = new Promise<void>((resolve, reject) => {
     child.once("error", (error) => {
       output.destroy();
+      if (terminationError) {
+        reject(terminationError);
+        return;
+      }
       reject(
         new ThreadRelinkError(
           "OPENCODE_EXPORT_FAILED",
@@ -272,6 +308,11 @@ export async function exportOpenCodeSessionToTempFile(
       );
     });
     child.once("exit", (code, signal) => {
+      if (terminationError) {
+        output.destroy();
+        reject(terminationError);
+        return;
+      }
       if (signal) {
         output.destroy();
         reject(
@@ -303,6 +344,10 @@ export async function exportOpenCodeSessionToTempFile(
   } catch (exportError) {
     output.destroy();
     await outputFinished.catch(() => undefined);
+    if (options.signal?.aborted) {
+      await rm(tempPath, { force: true });
+      throw exportError;
+    }
     try {
       const fallbackJson = readOpenCodeExportJsonFromDatabase(
         id,
@@ -318,6 +363,9 @@ export async function exportOpenCodeSessionToTempFile(
         { cause: fallbackError },
       );
     }
+  } finally {
+    clearTimeout(timeout);
+    options.signal?.removeEventListener("abort", abort);
   }
   await rename(tempPath, filePath);
   return {

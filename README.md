@@ -17,17 +17,17 @@
 - 独立支持 **Codex**、**Cursor Agent CLI** 和 **OpenCode**：只显示本机存在 CLI 或历史数据的 provider，缺少其中一个不会影响其它 provider
 - 项目改名或移动后自动重连：基于 Git remote + commit、路径别名等保守证据，绝不只凭目录名关联
 - 在 ChatAnchor 视图里继续旧会话，或从标题栏 / provider 分组直接开启新会话
-- 跨 agent 迁移上下文：复制 Codex / Cursor `@path`、导出 OpenCode JSON，或生成精简 Markdown transcript
-- 从最多 10 条已链接会话生成本地项目 Context Pack，并用 `@path` 或确定性本地搜索在不同 agent 间复用
+- 一键跨 agent 接力：从一条历史会话生成分层本地交接包，并直接在当前项目中启动另一个 agent 继续工作
+- 从已链接会话生成完整的本地项目 Context Pack，作为多会话归档，并用 `@path` 或确定性本地搜索读取
 - 整理会话列表：自定义描述、隐藏 / 恢复会话、Find Old Conversations 找回历史会话
 - 完全本地运行、无遥测、不上传任何数据
 
-> **OpenCode** 会话存在本地 `opencode.db` 中，没有独立原始会话文件，因此不提供 Reveal / Copy @ Path。需要把上下文交给其它 agent 时，优先使用 **Copy Compact @ Transcript**；确实需要 JSON `@path` 时，使用 **Export OpenCode JSON and Copy @ Path**。即使 OpenCode CLI 暂时不可用，显式导出仍可从本地数据库生成只读副本。
+> **OpenCode** 会话存在本地 `opencode.db` 中，没有独立原始会话文件，因此不提供 Reveal / Copy @ Path。需要继续到其它 agent 时，使用 **Continue in Another Agent...**；确实需要 JSON `@path` 时，使用 **Export OpenCode JSON and Copy @ Path**。即使 OpenCode CLI 暂时不可用，显式导出仍可从本地数据库生成只读副本。
 
 ## 快速开始
 
 > [!NOTE]
-> ChatAnchor 的默认扫描只读取本地元数据，不会上传任何数据，也不会读取会话正文。只有你显式执行导出、精简 transcript 或 Context Pack 操作时才会读取所选内容；首次使用前，你需要显式授权并逐个设置项目。
+> ChatAnchor 的默认扫描只读取本地元数据，不会上传任何数据，也不会读取会话正文。只有你显式执行导出、精简 transcript、会话接力或 Context Pack 操作时才会读取所选内容；首次使用前，你需要显式授权并逐个设置项目。
 
 1. **安装扩展**
    - 从 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink) 安装，或在命令行执行：
@@ -51,13 +51,19 @@
 
 7. **整理会话列表**：右键会话可编辑描述、隐藏会话、生成精简上下文，或对 Codex / Cursor 会话执行 **Reveal Conversation File**；标题栏眼睛按钮用于显示隐藏项或一键取消隐藏。
 
-8. **跨 agent 迁移上下文**：右键历史会话选择 **Copy Compact @ Transcript**。首次使用会要求确认读取会话正文；随后 ChatAnchor 会生成本地精简 Markdown 并复制 `@path`，可直接粘贴给另一个 agent。
+8. **接力到另一个 agent**：右键历史会话选择 **Continue in Another Agent...**，再选择 Codex、Cursor 或 OpenCode。ChatAnchor 会保留完整原始记录和可读会话，生成包含当前工作集的入口文件，复制其 `@path`，并在当前项目中启动目标 agent。
 
-9. **建立项目 Context Pack**：运行 **Create or Update Project Context Pack**，选择最多 10 条已链接会话。ChatAnchor 会提取每条会话最早 2 个用户请求和最近 5 组完整问答，保留工具名称、命令、状态与项目相对路径，并复制生成文件的 `@path`。之后可运行 **Search Project Context** 或 **Copy Project Context @ Path**。
+9. **建立项目 Context Pack**：运行 **Create or Update Project Context Pack**，选择任意数量的已链接会话。ChatAnchor 会先显示来源大小，再把原始记录完整复制到本地，同时生成便于阅读的 Markdown transcript，并复制索引文件的 `@path`。之后可运行 **Search Project Context** 或 **Copy Project Context @ Path**。
+
+## 跨 Agent 会话接力
+
+一次接力只处理一条会话。`handoff.md` 是目标 agent 首先读取的入口：较短会话会完整进入入口；较长会话优先从最后一次上下文压缩继续，没有压缩点时保留最初目标和最近最多 20 个用户回合。完整内容始终保存在 `full-transcript.md` 和 `original/`，入口中的任何省略都会明确标注并链接到完整记录。交接包按内容哈希保存在 `~/.threadrelink/handoffs/`，不会调用模型生成摘要，也不会修改原始会话。
+
+如需手动传递较小的单文件上下文，仍可使用 **Copy Compact @ Transcript**。它适合粘贴 `@path`，不会自动启动目标 agent。
 
 ## 项目 Context Pack 与 CLI
 
-Context Pack 是显式生成、确定性且完全本地的项目记忆。文件位于 `~/.threadrelink/context-packs/<project-id>/context.md`，清单使用独立的 `context_pack.v1` schema。生成时会移除系统/开发者消息和完整工具输出，对常见密钥、令牌、Cookie、URL 密码与凭据赋值脱敏；项目内绝对路径转为相对路径，项目外路径替换为 `<external-path>`。如果任一来源无法读取或解析，现有 Context Pack 不会被替换。
+Context Pack 是显式生成、确定性且完全本地的项目记忆。`context_pack.v2` 使用 `context.md` 作为入口，`sources/` 下同时保存每条来源的完整原始副本和可读 transcript，`manifest.json` 记录大小与 SHA-256。它不会脱敏、删除或截断信息：系统/开发者消息、完整工具输入输出、密钥、Cookie 和绝对路径都会保留，因此生成前会显示来源数量、大小和明确的敏感信息提示。写入使用临时目录原子替换；任一来源复制失败时，现有 Context Pack 保持不变。旧版 `context_pack.v1` 仍可读取和搜索。
 
 同一功能也可通过独立 npm CLI 使用。CLI 不会初始化项目，只处理已经由扩展设置并链接的项目：
 
@@ -86,7 +92,7 @@ npx @ascendho/chatanchor-cli context path --cwd .
 
 ChatAnchor 完全在本机运行。默认只读取会话元数据（标题、时间、工作目录、Git 信息等），不读取消息正文，不上传任何数据，也不提供遥测；只有在显式设置项目并授权后才会扫描。
 
-自定义描述、隐藏状态和项目链接只写入本机 ChatAnchor registry，不会修改 Codex、Cursor 或 OpenCode 的原始会话数据。只有当你显式执行导出、精简 transcript 或 Context Pack 操作时，ChatAnchor 才会读取会话正文；生成内容仍留在本机。Context Pack 首次使用需要单独授权，文件权限为目录 `0700`、文件 `0600`（在支持 POSIX 权限的平台）。**Forget Project** 会一并删除生成的 Context Pack，但不会删除 agent 的原始会话。
+自定义描述、隐藏状态和项目链接只写入本机 ChatAnchor registry，不会修改 Codex、Cursor 或 OpenCode 的原始会话数据。只有当你显式执行导出、精简 transcript、会话接力或 Context Pack 操作时，ChatAnchor 才会读取会话正文；生成内容仍留在本机。交接包和完整 Context Pack 都不做脱敏，并分别要求首次授权；生成前会提示大小和敏感信息范围。生成目录使用 `0700`、文件使用 `0600`（在支持 POSIX 权限的平台）。**Forget Project** 会一并删除生成的交接包和 Context Pack，但不会删除 agent 的原始会话。
 
 ## 未来规划
 

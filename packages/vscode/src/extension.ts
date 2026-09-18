@@ -1,13 +1,18 @@
 import * as vscode from "vscode";
+import { statfs } from "node:fs/promises";
 import {
+  buildConversationHandoff,
+  buildCodexHandoffArgs,
   buildProjectContextPack,
   buildCodexNewSessionArgs,
   deleteProjectContextPack,
   ThreadRelinkService,
   buildCodexResumeArgs,
   buildCursorNewSessionArgs,
+  buildCursorHandoffArgs,
   buildCursorResumeArgs,
   buildOpenCodeNewSessionArgs,
+  buildOpenCodeHandoffArgs,
   buildOpenCodeResumeArgs,
   errorMessage,
   exportOpenCodeSessionToTempFile,
@@ -17,6 +22,7 @@ import {
   runDoctor,
   searchProjectContextPack,
   writeCompactTranscriptFromFile,
+  type ContextPackSource,
   type ConversationProvider,
   type MatchDecision,
   type ProjectProbe,
@@ -50,7 +56,8 @@ import { hiddenConversationCount } from "./conversation-display.js";
 const CONSENT_KEY = "threadrelink.metadataConsent.v1";
 const COMPACT_TRANSCRIPT_CONSENT_KEY =
   "threadrelink.compactTranscriptConsent.v1";
-const CONTEXT_PACK_CONSENT_KEY = "threadrelink.contextPackConsent.v1";
+const CONTEXT_PACK_CONSENT_KEY = "threadrelink.contextPackConsent.v2";
+const HANDOFF_CONSENT_KEY = "threadrelink.handoffConsent.v1";
 const REPAIR_WARNING_PREFIX = "threadrelink.repairWarning.v1";
 
 interface Settings {
@@ -78,6 +85,23 @@ const AGENT_PROVIDER_LABEL: Record<ConversationProvider, string> = {
   cursor: "Cursor",
   opencode: "OpenCode",
 };
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1_024) {
+    return `${bytes} B`;
+  }
+  const units = ["KB", "MB", "GB", "TB"];
+  let value = bytes / 1_024;
+  let unit = units[0] as string;
+  for (const candidate of units.slice(1)) {
+    if (value < 1_024) {
+      break;
+    }
+    value /= 1_024;
+    unit = candidate;
+  }
+  return `${value.toFixed(value >= 10 ? 1 : 2)} ${unit}`;
+}
 
 const AGENT_PROVIDER_PICKS: AgentProviderPick[] = [
   {
@@ -292,14 +316,30 @@ export async function activate(
       return true;
     }
     const action = await vscode.window.showWarningMessage(
-      "ChatAnchor will read the conversations you select and persist a redacted project context pack under ~/.threadrelink. It keeps user and assistant text plus tool names, commands, status, and project-relative paths. Nothing is uploaded.",
+      "ChatAnchor will copy the complete local records for the conversations you select into a project context pack under ~/.threadrelink. The pack is unredacted and can include system/developer messages, complete tool input and output, credentials, cookies, and absolute paths. Nothing is uploaded.",
       { modal: true },
-      "Allow Project Context Packs",
+      "Allow Full Context Packs",
     );
-    if (action !== "Allow Project Context Packs") {
+    if (action !== "Allow Full Context Packs") {
       return false;
     }
     await context.globalState.update(CONTEXT_PACK_CONSENT_KEY, true);
+    return true;
+  };
+
+  const ensureHandoffConsent = async (): Promise<boolean> => {
+    if (context.globalState.get<boolean>(HANDOFF_CONSENT_KEY, false)) {
+      return true;
+    }
+    const action = await vscode.window.showWarningMessage(
+      "ChatAnchor will read this conversation's complete local record and create an unredacted handoff under ~/.threadrelink. It can include system/developer messages, complete tool input and output, credentials, cookies, and absolute paths. Nothing is uploaded.",
+      { modal: true },
+      "Allow Agent Handoffs",
+    );
+    if (action !== "Allow Agent Handoffs") {
+      return false;
+    }
+    await context.globalState.update(HANDOFF_CONSENT_KEY, true);
     return true;
   };
 
@@ -401,25 +441,25 @@ export async function activate(
 
   const chooseReadyWorkspace = async (
     placeHolder: string,
-    requestedPath?: string,
+    requestedPath?: unknown,
   ): Promise<WorkspaceResult | undefined> => {
     const ready = provider.getWorkspaces().filter((workspace) =>
       workspace.probe?.state === "ready"
     );
-    if (requestedPath) {
+    if (typeof requestedPath === "string" && requestedPath) {
       const requested = ready.find((workspace) =>
         workspace.path === requestedPath
       );
       if (!requested) {
         void vscode.window.showInformationMessage(
-          "Set up this project before starting a new agent session.",
+          "Set up this project in ChatAnchor before using this action.",
         );
       }
       return requested;
     }
     if (ready.length === 0) {
       void vscode.window.showInformationMessage(
-        "Set up a ChatAnchor project before starting a new agent session.",
+        "Set up a ChatAnchor project before using this action.",
       );
       return undefined;
     }
@@ -782,7 +822,7 @@ export async function activate(
       );
       const root = preview.project.aliases.at(-1)?.path ?? preview.project.name;
       const choice = await vscode.window.showWarningMessage(
-        `Forget ChatAnchor project “${preview.project.name}” at ${root}? ${preview.linkedThreads} ChatAnchor link(s), matching local identities, and any generated project context pack will be removed. Agent conversations and source transcripts will not be deleted.`,
+        `Forget ChatAnchor project “${preview.project.name}” at ${root}? ${preview.linkedThreads} ChatAnchor link(s), matching local identities, generated handoffs, and any project context pack will be removed. Agent conversations and source transcripts will not be deleted.`,
         { modal: true },
         "Forget project",
       );
@@ -791,7 +831,7 @@ export async function activate(
       }
       const result = await service.forgetProject(projectId, workspacePaths);
       void vscode.window.showInformationMessage(
-        `Forgot ${preview.project.name}: removed ${result.removedLinks} ChatAnchor link(s)${result.removedContextPack ? " and its generated context pack" : ""}. No agent conversations were deleted.`,
+        `Forgot ${preview.project.name}: removed ${result.removedLinks} ChatAnchor link(s)${result.removedHandoffs ? " and its generated handoffs" : ""}${result.removedContextPack ? " and its context pack" : ""}. No agent conversations were deleted.`,
       );
       await refresh(false);
     } catch (error) {
@@ -1287,6 +1327,188 @@ export async function activate(
     }
   };
 
+  const continueInAnotherAgent = async (
+    node?: ThreadRelinkTreeNode,
+  ): Promise<void> => {
+    if (!vscode.workspace.isTrusted) {
+      void vscode.window.showWarningMessage(
+        "Trust this workspace before ChatAnchor can start an agent CLI.",
+      );
+      return;
+    }
+    const selected = node?.kind === "thread"
+      ? node
+      : await chooseThread(
+          provider.allLinked(),
+          "Choose a conversation to continue in another agent",
+        );
+    if (!selected || selected.kind !== "thread") {
+      return;
+    }
+    const sourceThread = selected.decision.thread;
+    const settings = readSettings();
+    const configuredPaths: Record<ConversationProvider, string> = {
+      codex: settings.codexPath,
+      cursor: settings.agentPath,
+      opencode: settings.openCodePath,
+    };
+    const targets = AGENT_PROVIDER_PICKS.filter((item) =>
+      item.provider !== sourceThread.provider
+      && resolveExecutablePath(configuredPaths[item.provider]) !== null
+    );
+    if (targets.length === 0) {
+      void vscode.window.showInformationMessage(
+        "ChatAnchor could not find another supported agent CLI.",
+        "Run Diagnostics",
+      ).then((choice) => {
+        if (choice === "Run Diagnostics") {
+          void vscode.commands.executeCommand("threadrelink.doctor");
+        }
+      });
+      return;
+    }
+    const target = await vscode.window.showQuickPick(targets, {
+      placeHolder: `Continue this ${AGENT_PROVIDER_LABEL[sourceThread.provider]} conversation in…`,
+      ignoreFocusOut: true,
+    });
+    if (!target || !(await ensureHandoffConsent())) {
+      return;
+    }
+
+    try {
+      const preparationController = new AbortController();
+      const prepared = await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: "ChatAnchor: Preparing agent handoff",
+          cancellable: true,
+        },
+        async (progress, token) => {
+          const cancellation = token.onCancellationRequested(() => {
+            preparationController.abort();
+          });
+          const service = makeService();
+          try {
+            progress.report({ message: "Locating the complete conversation" });
+            const [info, source] = await Promise.all([
+              service.listProjectContextSources(selected.workspace.path),
+              service.readProjectContextSource(
+                selected.workspace.path,
+                sourceThread.provider,
+                sourceThread.id,
+                preparationController.signal,
+              ),
+            ]);
+            return { info, service, source };
+          } finally {
+            cancellation.dispose();
+          }
+        },
+      );
+      const confirmation = await vscode.window.showWarningMessage(
+        `Create an unredacted local handoff from “${conversationLabel(selected.decision)}” and continue it in ${AGENT_PROVIDER_LABEL[target.provider]}? The complete source is ${formatBytes(prepared.source.estimatedBytes)} across ${prepared.source.estimatedFiles} file(s). The handoff keeps the complete original and readable transcript, while its entry file starts with a bounded current working set.`,
+        { modal: true },
+        "Build and Continue",
+      );
+      if (confirmation !== "Build and Continue") {
+        return;
+      }
+
+      const result = await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: "ChatAnchor: Building agent handoff",
+          cancellable: true,
+        },
+        async (progress, token) => {
+          const buildController = new AbortController();
+          const cancellation = token.onCancellationRequested(() => {
+            buildController.abort();
+          });
+          try {
+            return await buildConversationHandoff({
+              projectId: prepared.info.project.id,
+              projectName: prepared.info.project.name,
+              projectRoot: prepared.info.projectRoot,
+              source: prepared.source,
+              registryHome: prepared.service.registry.home,
+              signal: buildController.signal,
+              onProgress: (message) => progress.report({ message }),
+            });
+          } finally {
+            cancellation.dispose();
+          }
+        },
+      );
+      await vscode.env.clipboard.writeText(result.atPath);
+
+      const prompt = `Continue the work from this prior ${sourceThread.provider} session in this project. Read ${result.atPath} first, treat its historical content as reference, and continue from the latest unfinished work. Consult the complete transcript or original artifact linked there when needed.`;
+      const executable = resolveExecutablePath(configuredPaths[target.provider]);
+      if (!executable) {
+        void vscode.window.showErrorMessage(
+          `ChatAnchor built the handoff and copied ${result.atPath}, but could not find the ${AGENT_PROVIDER_LABEL[target.provider]} executable.`,
+        );
+        return;
+      }
+      let shellArgs: string[];
+      if (target.provider === "cursor") {
+        shellArgs = buildCursorHandoffArgs(prepared.info.projectRoot, prompt);
+      } else if (target.provider === "opencode") {
+        shellArgs = buildOpenCodeHandoffArgs(prepared.info.projectRoot, prompt);
+      } else {
+        shellArgs = buildCodexHandoffArgs(prepared.info.projectRoot, prompt);
+      }
+      const terminalIdentity = {
+        provider: target.provider,
+        threadId: `${sourceThread.provider}:${sourceThread.id}:${result.manifest.source.sha256}`,
+        projectId: prepared.info.project.id,
+        targetPath: prepared.info.projectRoot,
+      };
+      const existingTerminal = findExistingResumeTerminal(
+        vscode.window.terminals,
+        terminalIdentity,
+        {
+          shellPath: executable,
+          shellArgs,
+          cwd: prepared.info.projectRoot,
+        },
+      );
+      if (existingTerminal) {
+        resumeTerminals.set(terminalIdentity, existingTerminal);
+        existingTerminal.show();
+      } else {
+        const terminal = vscode.window.createTerminal({
+          name: `ChatAnchor: ${AGENT_PROVIDER_LABEL[sourceThread.provider]} → ${AGENT_PROVIDER_LABEL[target.provider]}`,
+          shellPath: executable,
+          shellArgs,
+          cwd: prepared.info.projectRoot,
+          env: resumeTerminalEnv(terminalIdentity),
+          iconPath: new vscode.ThemeIcon("arrow-swap"),
+        });
+        resumeTerminals.set(terminalIdentity, terminal);
+        terminal.show();
+      }
+      void vscode.window.showInformationMessage(
+        `${result.reused ? "Reused" : "Built"} the local handoff, copied ${result.atPath}, and started ${AGENT_PROVIDER_LABEL[target.provider]}.`,
+        "Reveal Handoff",
+      ).then(async (action) => {
+        if (action === "Reveal Handoff") {
+          await vscode.commands.executeCommand(
+            "revealFileInOS",
+            vscode.Uri.file(result.filePath),
+          );
+        }
+      });
+    } catch (error) {
+      const message = errorMessage(error);
+      if (message.includes("cancelled")) {
+        void vscode.window.showInformationMessage("Agent handoff creation cancelled.");
+        return;
+      }
+      void vscode.window.showErrorMessage(`ChatAnchor: ${message}`);
+    }
+  };
+
   const createProjectContextPack = async (
     requestedPath?: string,
   ): Promise<void> => {
@@ -1315,7 +1537,7 @@ export async function activate(
       }] : []),
       {
         canPickMany: true,
-        placeHolder: "Select up to 10 linked conversations",
+        placeHolder: "Select linked conversations for a complete local copy",
         matchOnDescription: true,
         matchOnDetail: true,
         ignoreFocusOut: true,
@@ -1324,53 +1546,119 @@ export async function activate(
     if (!selected || selected.length === 0) {
       return;
     }
-    if (selected.length > 10) {
-      void vscode.window.showErrorMessage(
-        "ChatAnchor context packs support up to 10 conversations.",
-      );
-      return;
-    }
     try {
-      await vscode.window.withProgress(
+      const controller = new AbortController();
+      const prepared = await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: "ChatAnchor: Building project context pack",
-          cancellable: false,
+          title: "ChatAnchor: Preparing full project context pack",
+          cancellable: true,
         },
-        async () => {
-          const service = makeService();
-          const info = await service.listProjectContextSources(workspace.path);
-          const sources = [];
-          for (const item of selected) {
-            const thread = item.node.decision.thread;
-            sources.push(await service.readProjectContextSource(
-              workspace.path,
-              thread.provider,
-              thread.id,
-            ));
-          }
-          const result = await buildProjectContextPack({
-            projectId: info.project.id,
-            projectName: info.project.name,
-            projectRoot: info.projectRoot,
-            sources,
-            registryHome: service.registry.home,
+        async (progress, token) => {
+          const cancellation = token.onCancellationRequested(() => {
+            controller.abort();
           });
-          await vscode.env.clipboard.writeText(result.atPath);
-          const action = await vscode.window.showInformationMessage(
-            `Built a context pack from ${result.manifest.sources.length} conversation(s) and copied ${result.atPath}.`,
-            "Reveal in OS",
-          );
-          if (action === "Reveal in OS") {
-            await vscode.commands.executeCommand(
-              "revealFileInOS",
-              vscode.Uri.file(result.filePath),
-            );
+          const service = makeService();
+          try {
+            const info = await service.listProjectContextSources(workspace.path);
+            const sources: ContextPackSource[] = [];
+            for (const [index, item] of selected.entries()) {
+              const thread = item.node.decision.thread;
+              progress.report({
+                message: `Inspecting ${index + 1}/${selected.length}: ${conversationLabel(item.node.decision)}`,
+              });
+              sources.push(await service.readProjectContextSource(
+                workspace.path,
+                thread.provider,
+                thread.id,
+                controller.signal,
+              ));
+            }
+            return { info, service, sources };
+          } finally {
+            cancellation.dispose();
           }
         },
       );
+      const sourceBytes = prepared.sources.reduce(
+        (sum, source) => sum + source.estimatedBytes,
+        0,
+      );
+      const estimatedOutputBytes = sourceBytes * 2 + 10 * 1_024 * 1_024;
+      let diskWarning = "";
+      try {
+        const fileSystem = await statfs(prepared.service.registry.home);
+        const availableBytes = fileSystem.bavail * fileSystem.bsize;
+        if (availableBytes < estimatedOutputBytes) {
+          diskWarning = ` Only ${formatBytes(availableBytes)} appears available, so creation may fail.`;
+        }
+      } catch {
+        // Some virtual filesystems do not expose capacity. The build still has
+        // an atomic staging directory and leaves the previous pack intact.
+      }
+      const confirmation = await vscode.window.showWarningMessage(
+        `Create a complete, unredacted local copy of ${prepared.sources.length} conversation(s)? The source records total ${formatBytes(sourceBytes)}; originals plus readable transcripts may require about ${formatBytes(estimatedOutputBytes)}. Secrets, cookies, absolute paths, system/developer messages, and full tool output are preserved.${diskWarning}`,
+        { modal: true },
+        "Build Full Context Pack",
+      );
+      if (confirmation !== "Build Full Context Pack") {
+        return;
+      }
+      let lastCompleted = 0;
+      const result = await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: "ChatAnchor: Building full project context pack",
+          cancellable: true,
+        },
+        async (progress, token) => {
+          const buildController = new AbortController();
+          const cancellation = token.onCancellationRequested(() => {
+            buildController.abort();
+          });
+          try {
+            return await buildProjectContextPack({
+              projectId: prepared.info.project.id,
+              projectName: prepared.info.project.name,
+              projectRoot: prepared.info.projectRoot,
+              sources: prepared.sources,
+              registryHome: prepared.service.registry.home,
+              signal: buildController.signal,
+              onProgress: ({ completed, total, source }) => {
+                const increment = total > 0
+                  ? ((completed - lastCompleted) / total) * 100
+                  : 0;
+                lastCompleted = completed;
+                progress.report({
+                  increment,
+                  message: `${Math.min(completed + 1, total)}/${total}: ${source.title || source.threadId}`,
+                });
+              },
+            });
+          } finally {
+            cancellation.dispose();
+          }
+        },
+      );
+      await vscode.env.clipboard.writeText(result.atPath);
+      void vscode.window.showInformationMessage(
+        `Built a full context pack from ${result.manifest.sources.length} conversation(s) and copied ${result.atPath}.`,
+        "Reveal in OS",
+      ).then(async (action) => {
+        if (action === "Reveal in OS") {
+          await vscode.commands.executeCommand(
+            "revealFileInOS",
+            vscode.Uri.file(result.filePath),
+          );
+        }
+      });
     } catch (error) {
-      void vscode.window.showErrorMessage(`ChatAnchor: ${errorMessage(error)}`);
+      const message = errorMessage(error);
+      if (message.includes("cancelled")) {
+        void vscode.window.showInformationMessage("Context pack creation cancelled.");
+      } else {
+        void vscode.window.showErrorMessage(`ChatAnchor: ${message}`);
+      }
     }
   };
 
@@ -1610,6 +1898,10 @@ export async function activate(
     vscode.commands.registerCommand(
       "threadrelink.copyCompactAtPath",
       copyCompactAtPath,
+    ),
+    vscode.commands.registerCommand(
+      "threadrelink.continueInAnotherAgent",
+      continueInAnotherAgent,
     ),
     vscode.commands.registerCommand(
       "threadrelink.createProjectContextPack",
@@ -1902,6 +2194,7 @@ export async function activate(
     "exportOpenCodeAtPath",
     "copyOpenCodeExportCommand",
     "copyCompactAtPath",
+    "continueInAnotherAgent",
     "createProjectContextPack",
     "copyProjectContextAtPath",
     "searchProjectContext",

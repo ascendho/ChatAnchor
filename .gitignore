@@ -15,12 +15,9 @@ coverage/
 .threadrelink/
 .reporecall/
 
-# Local maintainer reference
-/docs/MARKETPLACE_PUBLISHING.md
+# Local maintainer docs
+/docs/
 
 # Generated artwork kept local (social preview / promo)
 assets/chat-anchor-social-preview*.png
 assets/chat-anchor-promo*.png
-
-# Local maintainer architecture notes
-/docs/ARCHITECTURE.md

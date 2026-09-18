@@ -1079,6 +1079,9 @@ describe("ThreadRelinkService", () => {
     });
     const project = await service.setupProject(root);
     await service.sync(root);
+    const handoffDirectory = join(base, "state", "handoffs", project.id);
+    await mkdir(handoffDirectory, { recursive: true });
+    await writeFile(join(handoffDirectory, "generated.md"), "handoff", "utf8");
     await service.setThreadCustomLabel(
       thread.id,
       project.id,
@@ -1092,6 +1095,8 @@ describe("ThreadRelinkService", () => {
 
     expect(preview.linkedThreads).toBe(1);
     expect(result.removedLinks).toBe(1);
+    expect(result.removedHandoffs).toBe(true);
+    await expect(access(handoffDirectory)).rejects.toBeDefined();
     expect(registry.projects).toHaveLength(0);
     expect(registry.threadLinks).toHaveLength(0);
     expect(registry.threadExclusions).toHaveLength(0);

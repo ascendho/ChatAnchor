@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.1.1
+
+- Add **Continue in Another Agent...** for one-click handoff from a linked
+  Codex, Cursor, or OpenCode conversation into either of the other agents.
+- Store content-addressed, fully local handoffs with a bounded working-set
+  entry, complete readable transcript, byte-preserving original, manifest,
+  source hashes, cancellation, and atomic writes.
+- Reuse running handoff terminals, retain failed tool calls and compaction
+  boundaries, and delete generated handoffs with **Forget Project**.
+- Preserve complete, unredacted conversation artifacts in `context_pack.v2`,
+  alongside readable full transcripts and a Markdown index.
+- Remove context-pack source and content limits, and show source size, disk
+  estimates, sensitive-data warnings, cancellable progress, and per-source
+  status before and during generation.
+- Finish progress before showing the success action, preventing the build
+  notification from spinning while it waits for a user response.
+- Ignore VS Code view-title command arguments that were incorrectly treated as
+  workspace paths, and add a timeout plus read-only database fallback for
+  stalled OpenCode exports.
+- Continue reading and searching existing `context_pack.v1` packs.
+
 ## 1.1.0
 
 - Add explicit, local project context packs built from up to 10 linked Codex,

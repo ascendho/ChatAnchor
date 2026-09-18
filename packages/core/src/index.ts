@@ -1,5 +1,6 @@
 export * from "./codex.js";
 export * from "./compact-transcript.js";
+export * from "./conversation-handoff.js";
 export * from "./context-pack.js";
 export * from "./conversation-path.js";
 export * from "./cursor.js";

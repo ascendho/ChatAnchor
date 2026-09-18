@@ -19,6 +19,17 @@ const EXIT_SOURCE = 4;
 const EXIT_CONSENT = 5;
 const EXIT_PACK = 6;
 
+function formatBytes(bytes: number): string {
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let value = bytes;
+  let index = 0;
+  while (value >= 1_024 && index < units.length - 1) {
+    value /= 1_024;
+    index += 1;
+  }
+  return `${index === 0 ? value : value.toFixed(value >= 10 ? 1 : 2)} ${units[index]}`;
+}
+
 function usage(): never {
   console.error(`Usage:
   chatanchor context build --cwd <path> --thread <provider:id>... [--yes]
@@ -109,14 +120,8 @@ async function run(): Promise<void> {
         "Build requires at least one --thread provider:id argument.",
       );
     }
-    if (references.length > 10) {
-      throw new ThreadRelinkError(
-        "CONTEXT_PACK_SOURCE_COUNT",
-        "Build accepts at most 10 --thread provider:id arguments.",
-      );
-    }
     if (!(await confirm(
-      "Read the selected local transcripts and persist a redacted project context pack? Nothing is uploaded.",
+      "Read the selected local conversations and prepare a complete, unredacted project context pack? It can include credentials, cookies, absolute paths, system/developer messages, and full tool output. Nothing is uploaded.",
       yes,
     ))) {
       console.error("Context pack creation was not confirmed. Pass --yes for non-interactive use.");
@@ -130,6 +135,17 @@ async function run(): Promise<void> {
         source.provider,
         source.threadId,
       ));
+    }
+    const sourceBytes = sources.reduce(
+      (sum, source) => sum + source.estimatedBytes,
+      0,
+    );
+    if (!(await confirm(
+      `Build from ${sources.length} conversation(s) totaling ${formatBytes(sourceBytes)}? Originals plus readable transcripts may require about ${formatBytes(sourceBytes * 2 + 10 * 1_024 * 1_024)}.`,
+      yes,
+    ))) {
+      console.error("Context pack creation was not confirmed.");
+      process.exit(EXIT_CONSENT);
     }
     const result = await buildProjectContextPack({
       projectId: info.project.id,

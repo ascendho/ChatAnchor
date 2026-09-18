@@ -205,6 +205,7 @@ export interface ForgetProjectResult {
   removedLinks: number;
   removedIdentityPaths: string[];
   removedContextPack: boolean;
+  removedHandoffs: boolean;
 }
 
 export interface HistoryAdapter {

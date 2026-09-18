@@ -1,6 +1,6 @@
 {
   "name": "@ascendho/chatanchor-cli",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Local project context packs for AI coding agents.",
   "type": "module",
   "bin": {

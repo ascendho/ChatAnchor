@@ -16,7 +16,9 @@ export type CompactTranscriptEventKind =
   | "user"
   | "assistant"
   | "tool"
-  | "system";
+  | "system"
+  | "developer"
+  | "compact";
 
 export interface CompactTranscriptSource {
   provider: ConversationProvider;
@@ -40,7 +42,10 @@ export interface CompactTranscriptEvent {
   timestamp?: string | null;
   toolName?: string | null;
   command?: string | null;
+  input?: string | null;
   status?: string | null;
+  failed?: boolean;
+  retained?: boolean;
 }
 
 export interface CompactTranscriptParseStats {
@@ -58,7 +63,7 @@ export interface CompactTranscriptResult {
   truncatedEvents: number;
 }
 
-interface ParseResult {
+export interface CompactTranscriptParseResult {
   events: CompactTranscriptEvent[];
   stats: CompactTranscriptParseStats;
 }
@@ -316,6 +321,35 @@ function compactStructuredValue(value: unknown): string {
   }
 }
 
+function booleanField(
+  record: Record<string, unknown>,
+  keys: string[],
+): boolean | null {
+  for (const key of keys) {
+    if (typeof record[key] === "boolean") {
+      return record[key];
+    }
+  }
+  return null;
+}
+
+function failedStatus(status: string | null, record: Record<string, unknown>): boolean {
+  if (booleanField(record, ["isError", "is_error", "failed"]) === true) {
+    return true;
+  }
+  if (!status) {
+    return false;
+  }
+  const normalized = status.trim().toLowerCase();
+  if (/^-?\d+$/u.test(normalized)) {
+    return Number(normalized) !== 0;
+  }
+  return normalized.includes("fail")
+    || normalized.includes("error")
+    || normalized.includes("cancel")
+    || normalized.includes("interrupt");
+}
+
 function classifyEvent(value: unknown): CompactTranscriptEvent | null {
   const root = asRecord(value);
   if (!root) {
@@ -345,6 +379,18 @@ function classifyEvent(value: unknown): CompactTranscriptEvent | null {
       "exit_code",
       "code",
     ]);
+    const retained = booleanField(candidate, ["retained", "is_retained"])
+      ?? false;
+
+    if (label.includes("compact")) {
+      const text = eventText(candidate);
+      return {
+        kind: "compact",
+        text: text || "Context compacted.",
+        timestamp,
+        retained,
+      };
+    }
 
     if (
       role === "user"
@@ -354,7 +400,7 @@ function classifyEvent(value: unknown): CompactTranscriptEvent | null {
       || label.includes("usermessage")
     ) {
       const text = eventText(candidate);
-      return text ? { kind: "user", text, timestamp } : null;
+      return text ? { kind: "user", text, timestamp, retained } : null;
     }
 
     if (
@@ -366,18 +412,17 @@ function classifyEvent(value: unknown): CompactTranscriptEvent | null {
       || label.includes("agentmessage")
     ) {
       const text = eventText(candidate);
-      return text ? { kind: "assistant", text, timestamp } : null;
+      return text ? { kind: "assistant", text, timestamp, retained } : null;
     }
 
-    if (
-      role === "system"
-      || role === "developer"
-      || label.includes("system")
-      || label.includes("developer")
-      || label.includes("compacted")
-    ) {
+    if (role === "developer" || label.includes("developer")) {
       const text = eventText(candidate);
-      return text ? { kind: "system", text, timestamp } : null;
+      return text ? { kind: "developer", text, timestamp, retained } : null;
+    }
+
+    if (role === "system" || label.includes("system")) {
+      const text = eventText(candidate);
+      return text ? { kind: "system", text, timestamp, retained } : null;
     }
 
     if (
@@ -393,20 +438,28 @@ function classifyEvent(value: unknown): CompactTranscriptEvent | null {
       || command
     ) {
       const text = collectToolOutput(candidate);
+      const inputValue = candidate.input
+        ?? candidate.arguments
+        ?? candidate.args
+        ?? candidate.parameters;
+      const input = compactStructuredValue(inputValue);
       return {
         kind: "tool",
         text: text || command || toolName || "Tool call",
         timestamp,
         toolName,
         command,
+        input: input || null,
         status,
+        failed: failedStatus(status, candidate),
+        retained,
       };
     }
   }
   return null;
 }
 
-function parseJsonl(raw: string): ParseResult {
+function parseJsonl(raw: string): CompactTranscriptParseResult {
   const stats: CompactTranscriptParseStats = {
     inputEvents: 0,
     parsedEvents: 0,
@@ -476,7 +529,7 @@ function walkJsonEvents(
   }
 }
 
-function parseJson(raw: string): ParseResult {
+function parseJson(raw: string): CompactTranscriptParseResult {
   const stats: CompactTranscriptParseStats = {
     inputEvents: 0,
     parsedEvents: 0,
@@ -502,7 +555,10 @@ function openCodeRoleKind(role: string | null): CompactTranscriptEventKind | nul
   if (role === "assistant" || role === "agent") {
     return "assistant";
   }
-  if (role === "system" || role === "developer") {
+  if (role === "developer") {
+    return "developer";
+  }
+  if (role === "system") {
     return "system";
   }
   return null;
@@ -570,7 +626,9 @@ function openCodeToolPartEvent(
     timestamp,
     toolName,
     command,
+    input: compactStructuredValue(input) || null,
     status,
+    failed: failedStatus(status, state ?? part),
   };
 }
 
@@ -623,7 +681,9 @@ function openCodeFilePartEvent(
   };
 }
 
-function parseOpenCodeStructuredJson(parsed: unknown): ParseResult | null {
+function parseOpenCodeStructuredJson(
+  parsed: unknown,
+): CompactTranscriptParseResult | null {
   const root = asRecord(parsed);
   const messages = root ? arrayRecords(root.messages) : [];
   if (!root || messages.length === 0) {
@@ -682,7 +742,7 @@ function parseOpenCodeStructuredJson(parsed: unknown): ParseResult | null {
   return { events, stats };
 }
 
-function parseOpenCodeJson(raw: string): ParseResult {
+function parseOpenCodeJson(raw: string): CompactTranscriptParseResult {
   const stats: CompactTranscriptParseStats = {
     inputEvents: 0,
     parsedEvents: 0,
@@ -705,7 +765,7 @@ function parseOpenCodeJson(raw: string): ParseResult {
 function parseRawTranscript(
   provider: ConversationProvider,
   raw: string,
-): ParseResult {
+): CompactTranscriptParseResult {
   return provider === "opencode" ? parseOpenCodeJson(raw) : parseJsonl(raw);
 }
 
@@ -714,6 +774,13 @@ export function parseCompactTranscriptEvents(
   raw: string,
 ): CompactTranscriptEvent[] {
   return parseRawTranscript(provider, raw).events;
+}
+
+export function parseCompactTranscriptWithStats(
+  provider: ConversationProvider,
+  raw: string,
+): CompactTranscriptParseResult {
+  return parseRawTranscript(provider, raw);
 }
 
 function truncateText(

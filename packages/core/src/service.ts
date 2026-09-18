@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { readFile, stat } from "node:fs/promises";
+import { stat } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import {
   CodexAppServerClient,
@@ -19,8 +19,10 @@ import {
 } from "./opencode.js";
 import {
   deleteProjectContextPack,
+  measureContextPackArtifact,
   type ContextPackSource,
 } from "./context-pack.js";
+import { deleteProjectConversationHandoffs } from "./conversation-handoff.js";
 import {
   ensureGitProjectId,
   excludeFolderIdentity,
@@ -1466,6 +1468,7 @@ export class ThreadRelinkService {
     inputPath: string,
     provider: ConversationProvider,
     threadId: string,
+    signal?: AbortSignal,
   ): Promise<ContextPackSource> {
     const info = await this.listProjectContextSources(inputPath);
     const thread = info.sources.find((candidate) =>
@@ -1482,6 +1485,7 @@ export class ThreadRelinkService {
       filePath = (await exportOpenCodeSessionToTempFile(threadId, {
         openCodeHome: this.openCodeHome,
         openCodePath: this.openCodePath,
+        signal,
       })).filePath;
     } else {
       filePath = await this.resolveConversationFilePath(
@@ -1490,9 +1494,13 @@ export class ThreadRelinkService {
         thread.cwd,
       );
     }
-    let raw: string;
+    let sourceInfo;
+    let measure;
     try {
-      raw = await readFile(filePath, "utf8");
+      [sourceInfo, measure] = await Promise.all([
+        stat(filePath),
+        measureContextPackArtifact(filePath, signal),
+      ]);
     } catch (error) {
       throw new ThreadRelinkError(
         "CONTEXT_PACK_SOURCE_UNREADABLE",
@@ -1505,7 +1513,10 @@ export class ThreadRelinkService {
       threadId,
       title: conversationTitle(thread),
       updatedAt: thread.updatedAt,
-      raw,
+      sourcePath: filePath,
+      sourceKind: sourceInfo.isDirectory() ? "directory" : "file",
+      estimatedBytes: measure.bytes,
+      estimatedFiles: measure.files,
     };
   }
 
@@ -1614,11 +1625,16 @@ export class ThreadRelinkService {
       projectId,
       this.registry.home,
     );
+    const removedHandoffs = await deleteProjectConversationHandoffs(
+      projectId,
+      this.registry.home,
+    );
     return {
       projectId,
       removedLinks: preview.linkedThreads,
       removedIdentityPaths: [...new Set(removedIdentityPaths)],
       removedContextPack,
+      removedHandoffs,
     };
   }
 }

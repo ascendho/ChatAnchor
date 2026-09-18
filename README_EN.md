@@ -17,17 +17,17 @@ This extension grew out of the problem discussed in [official Codex issue 26836]
 - Detects **Codex**, **Cursor Agent CLI**, and **OpenCode** independently, showing only providers with a local CLI or history so one missing agent never blocks the others
 - Automatically reconnects after a project is renamed or moved, based on conservative evidence such as Git remote + commit and path aliases — never links by directory name alone
 - Resume existing conversations or start new Codex / Cursor / OpenCode sessions directly from the ChatAnchor view
-- Carry context across agents: copy Codex / Cursor `@path`, export OpenCode JSON, or create compact Markdown transcripts
-- Build a local project context pack from up to 10 linked conversations, then reuse it across agents by `@path` or deterministic local search
+- Continue work in another agent with one action: build a layered local handoff from one conversation and start the target agent in the current project
+- Build a complete local project context pack from linked conversations for multi-session archival, `@path` access, and deterministic local search
 - Organize conversations with custom descriptions, hide / unhide controls, and Find Old Conversations
 - Runs entirely locally — no telemetry, nothing uploaded
 
-> **OpenCode** conversations live in the local `opencode.db` and do not have standalone raw files, so Reveal / Copy @ Path is unavailable for them. For cross-agent handoff, prefer **Copy Compact @ Transcript**; use **Export OpenCode JSON and Copy @ Path** when you need a generated JSON `@path`. An explicit export can use a read-only database fallback even when the OpenCode CLI is temporarily unavailable.
+> **OpenCode** conversations live in the local `opencode.db` and do not have standalone raw files, so Reveal / Copy @ Path is unavailable for them. To continue in another agent, use **Continue in Another Agent...**; use **Export OpenCode JSON and Copy @ Path** when you need a generated JSON `@path`. An explicit export can use a read-only database fallback even when the OpenCode CLI is temporarily unavailable.
 
 ## Getting started
 
 > [!NOTE]
-> ChatAnchor's default scan only reads local metadata. It never uploads data and reads selected message bodies only for explicit export, compact transcript, or context-pack actions. Before first use, you must explicitly grant consent and set up each project.
+> ChatAnchor's default scan only reads local metadata. It never uploads data and reads selected message bodies only for explicit export, compact transcript, agent-handoff, or context-pack actions. Before first use, you must explicitly grant consent and set up each project.
 
 1. **Install the extension**
    - Install from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=ascendho.threadrelink), or run:
@@ -51,13 +51,19 @@ This extension grew out of the problem discussed in [official Codex issue 26836]
 
 7. **Organize the list**: right-click a conversation to edit its description, hide it, generate compact context, or run **Reveal Conversation File** for Codex / Cursor conversations. The title-bar eye button shows hidden conversations or unhides them all.
 
-8. **Carry context across agents**: right-click a historical conversation and choose **Copy Compact @ Transcript**. The first use asks for confirmation before reading the conversation body; then ChatAnchor writes a compact local Markdown file and copies its `@path` for pasting into another agent.
+8. **Continue in another agent**: right-click a historical conversation, choose **Continue in Another Agent...**, then select Codex, Cursor, or OpenCode. ChatAnchor preserves the complete original and readable conversation, creates an entry file containing the current working set, copies its `@path`, and starts the target agent in the current project.
 
-9. **Build a project context pack**: run **Create or Update Project Context Pack** and select up to 10 linked conversations. ChatAnchor keeps the first two user requests and latest five complete user/assistant pairs from each source, plus tool names, commands, status, and project-relative paths. It copies the generated `@path`; use **Search Project Context** or **Copy Project Context @ Path** later.
+9. **Build a project context pack**: run **Create or Update Project Context Pack** and select any number of linked conversations. ChatAnchor shows the source size first, copies the complete original records locally, creates readable Markdown transcripts, and copies the index `@path`. Use **Search Project Context** or **Copy Project Context @ Path** later.
+
+## Cross-agent conversation handoffs
+
+Each handoff carries one conversation. `handoff.md` is the target agent's entry point: short conversations fit in full; long conversations continue from the last context-compaction boundary when available, otherwise keeping the initial goal and up to the latest 20 user turns. Complete content always remains in `full-transcript.md` and `original/`, and every omission in the entry points to those records. Content-addressed handoffs stay under `~/.threadrelink/handoffs/`; ChatAnchor does not call a model to summarize them or modify the source conversation.
+
+**Copy Compact @ Transcript** remains available when you want a smaller file to pass manually without starting another agent.
 
 ## Project context packs and CLI
 
-A context pack is explicit, deterministic, fully local project memory. It lives at `~/.threadrelink/context-packs/<project-id>/context.md`, with an independent `context_pack.v1` manifest. Generation removes system/developer messages and full tool output; redacts common private keys, tokens, cookies, URL passwords, and credential assignments; converts project paths to relative paths; and replaces outside paths with `<external-path>`. If any selected source cannot be read or parsed, the existing pack is left unchanged.
+A context pack is explicit, deterministic, fully local project memory. In `context_pack.v2`, `context.md` is the entry point, `sources/` contains both a complete original copy and a readable transcript for every source, and `manifest.json` records sizes and SHA-256 digests. Nothing is redacted, removed, or truncated: system/developer messages, full tool input and output, credentials, cookies, and absolute paths are preserved. ChatAnchor therefore shows the source count, estimated size, and a sensitive-data warning before building. Atomic replacement leaves the existing pack unchanged if a source cannot be copied. Legacy `context_pack.v1` packs remain readable and searchable.
 
 The same workflow is available through a standalone npm CLI. The CLI never initializes projects; it only works with projects and conversations already set up and linked by the extension:
 
@@ -86,7 +92,7 @@ For everyday cleanup, use `Hide Conversation`. Open link management only when a 
 
 ChatAnchor runs entirely on your machine. By default it only reads conversation metadata (title, timestamps, working directory, Git info), never reads message bodies, uploads nothing, and has no telemetry; scanning only happens after explicit project setup and consent.
 
-Custom descriptions, hidden state, and project links are stored only in the local ChatAnchor registry. ChatAnchor does not modify the original Codex, Cursor, or OpenCode conversation data. ChatAnchor reads message bodies only for explicit export, compact transcript, or context-pack actions, and generated files stay on your machine. Context packs require separate first-use consent and use `0700` directories and `0600` files on platforms with POSIX permissions. **Forget Project** also deletes its generated context pack without deleting source conversations.
+Custom descriptions, hidden state, and project links are stored only in the local ChatAnchor registry. ChatAnchor does not modify the original Codex, Cursor, or OpenCode conversation data. ChatAnchor reads message bodies only for explicit export, compact transcript, agent-handoff, or context-pack actions, and generated files stay on your machine. Handoffs and full context packs are unredacted and require separate first-use consent; their build prompts describe the size and sensitive-data scope. They use `0700` directories and `0600` files on platforms with POSIX permissions. **Forget Project** also deletes generated handoffs and the context pack without deleting source conversations.
 
 ## Roadmap
 

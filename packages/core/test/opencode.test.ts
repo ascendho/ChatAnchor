@@ -434,6 +434,40 @@ describe("OpenCode adapter", () => {
   );
 
   executableScriptTest(
+    "times out a stalled CLI export and uses the database fallback",
+    async () => {
+      const binDir = await mkdtemp(join(
+        tmpdir(),
+        "threadrelink-opencode-timeout-",
+      ));
+      const outputDir = await mkdtemp(
+        join(tmpdir(), "threadrelink-opencode-export-timeout-"),
+      );
+      const openCodeHome = await mkdtemp(
+        join(tmpdir(), "threadrelink-opencode-home-timeout-"),
+      );
+      cleanup.push(binDir, outputDir, openCodeHome);
+      createExportFixtureDatabase(openCodeHome);
+      const fakeOpenCode = join(binDir, "opencode");
+      await writeFakeOpenCode(fakeOpenCode, [
+        "setInterval(() => undefined, 1000);",
+      ]);
+
+      const result = await exportOpenCodeSessionToTempFile("ses_invalid", {
+        baseDir: outputDir,
+        openCodeHome,
+        openCodePath: fakeOpenCode,
+        timeoutMs: 20,
+      });
+
+      expect(result.exportSource).toBe("database-fallback");
+      await expect(readFile(result.filePath, "utf8")).resolves.toContain(
+        "opencode-db-fallback",
+      );
+    },
+  );
+
+  executableScriptTest(
     "rejects incomplete OpenCode export JSON when fallback is unavailable",
     async () => {
       const binDir = await mkdtemp(join(

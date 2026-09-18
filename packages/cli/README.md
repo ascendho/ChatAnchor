@@ -10,6 +10,6 @@ npx @ascendho/chatanchor-cli context search --cwd . --query "release checklist"
 npx @ascendho/chatanchor-cli context delete --cwd . --yes
 ```
 
-Repeat `--thread provider:id` to include up to 10 linked Codex, Cursor, or OpenCode conversations. Without `--yes`, build and delete require an interactive confirmation.
+Repeat `--thread provider:id` to include linked Codex, Cursor, or OpenCode conversations. Without `--yes`, build and delete require interactive confirmation.
 
-The CLI never initializes projects. Set up and link conversations with the ChatAnchor extension first. Context packs remain local under `~/.threadrelink/context-packs/`; message bodies are read only during an explicit build, common credentials and outside paths are redacted, and nothing is uploaded.
+The CLI never initializes projects. Set up and link conversations with the ChatAnchor extension first. Context packs remain local under `~/.threadrelink/context-packs/`; message bodies are read only during an explicit build, and nothing is uploaded. A `context_pack.v2` pack preserves complete, unredacted original records plus readable transcripts, including credentials, cookies, absolute paths, system/developer messages, and full tool output. The CLI shows the source size and estimated output size before an interactive build.
