@@ -135,19 +135,20 @@ describe("conversation handoffs", () => {
   });
 
   it("builds provider-specific launch arguments with a small seed prompt", () => {
-    const prompt = "Read @/tmp/handoff.md first.";
-    expect(buildCodexHandoffArgs("/repo", prompt)).toEqual([
+    const projectRoot = join(tmpdir(), "chatanchor-handoff-project");
+    const prompt = `Read @${join(tmpdir(), "handoff.md")} first.`;
+    expect(buildCodexHandoffArgs(projectRoot, prompt)).toEqual([
       "--cd",
-      "/repo",
+      projectRoot,
       prompt,
     ]);
-    expect(buildCursorHandoffArgs("/repo", prompt)).toEqual([
+    expect(buildCursorHandoffArgs(projectRoot, prompt)).toEqual([
       "--workspace",
-      "/repo",
+      projectRoot,
       prompt,
     ]);
-    expect(buildOpenCodeHandoffArgs("/repo", prompt)).toEqual([
-      "/repo",
+    expect(buildOpenCodeHandoffArgs(projectRoot, prompt)).toEqual([
+      projectRoot,
       "--prompt",
       prompt,
     ]);
